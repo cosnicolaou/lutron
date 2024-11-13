@@ -1,0 +1,7 @@
+cloudeng.io/cmdutil v0.0.0-20240522031305-dfb750a2120a h1:2vWOENZeOzY+C9c9AXdYPXySas0JF69z95wrJ1NSgTA=
+cloudeng.io/cmdutil v0.0.0-20240522031305-dfb750a2120a/go.mod h1:FvW2OnlZDgDaYoa+QbCm8RLJOkeXHZMF8z/ZR99uku8=
+cloudeng.io/file v0.0.0-20240214044655-223c29824207 h1:1bAIRRN7eLfZZpDWrqBxVkAOyPm7bTFU4XNvwKxClsw=
+cloudeng.io/file v0.0.0-20240214044655-223c29824207/go.mod h1:cmNGFILlDaNku6KiLsXeAGjY/227h2Pdb3pY763KG9s=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
