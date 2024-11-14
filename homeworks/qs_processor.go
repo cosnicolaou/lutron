@@ -15,34 +15,36 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type qsProcessorSpec struct {
+type QSProcessorConfig struct {
 	IPAddress string        `yaml:"ip_address"`
+	Timeout   time.Duration `yaml:"timeout"`
 	KeepAlive time.Duration `yaml:"keep_alive"`
-	AuthID    string        `yaml:"key_id"`
+	KeyID     string        `yaml:"key_id"`
 }
 
 type qsProcessor struct {
-	processorConfig devices.ControllerConfigCommon
-	Spec            qsProcessorSpec `yaml:",inline"`
-	conn            *conn
+	devices.ControllerConfigCommon
+	QSProcessorConfig `yaml:",inline"`
+
+	conn *conn
 }
 
-func newQSProcessor() *qsProcessor {
+func newQSProcessor(opts devices.Options) *qsProcessor {
 	return &qsProcessor{
-		conn: &conn{},
+		conn: &conn{opts: opts},
 	}
 }
 
 func (p *qsProcessor) SetConfig(c devices.ControllerConfigCommon) {
-	p.processorConfig = c
+	p.ControllerConfigCommon = c
 }
 
 func (p *qsProcessor) Config() devices.ControllerConfigCommon {
-	return p.processorConfig
+	return p.ControllerConfigCommon
 }
 
 func (p *qsProcessor) UnmarshalYAML(node *yaml.Node) error {
-	return node.Decode(&p.Spec)
+	return node.Decode(&p.QSProcessorConfig)
 }
 
 func (p *qsProcessor) Implementation() any {
@@ -50,31 +52,42 @@ func (p *qsProcessor) Implementation() any {
 }
 
 func (p *qsProcessor) connection(ctx context.Context) (protocol.Conn, error) {
-	return p.conn.conn(ctx, p.processorConfig, p.Spec)
+	return p.conn.conn(ctx, p.ControllerConfigCommon, p.QSProcessorConfig)
 }
 
 type conn struct {
 	sync.Mutex
-	keepAlive time.Duration
-	pconn     protocol.Conn
+	opts  devices.Options
+	pconn protocol.Conn
 }
 
 func (c *conn) conn(ctx context.Context, cfgBase devices.ControllerConfigCommon,
-	cfg qsProcessorSpec) (protocol.Conn, error) {
+	cfg QSProcessorConfig) (protocol.Conn, error) {
 	c.Lock()
 	defer c.Unlock()
 	if c.pconn != nil {
 		return c.pconn, c.pconn.Err()
 	}
-	conn := protocol.New(cfgBase.Name).Dial(context.Background(), cfg.IPAddress)
+
+	conn := c.opts.ProtocolConnection
+	if conn == nil {
+		opts := []protocol.Option{protocol.WithTimeout(cfg.Timeout)}
+		if c.opts.Logger != nil {
+			opts = append(opts, protocol.WithLogger(c.opts.Logger))
+		}
+		conn = protocol.New(cfgBase.Name, opts...).
+			Dial(context.Background(), cfg.IPAddress)
+	}
 	if conn.Err() != nil {
 		return nil, conn.Err()
 	}
+	c.pconn = conn
+
 	keepalive := cfg.KeepAlive
 	if keepalive == 0 {
 		keepalive = time.Minute * 5
 	}
-	go c.disconnect(ctx, c.keepAlive)
+	go c.disconnect(ctx, cfg.KeepAlive)
 	return conn, nil
 }
 

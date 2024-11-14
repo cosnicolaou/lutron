@@ -56,7 +56,7 @@ func (t *test_controller) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
-func new_controller(typ string) (devices.Controller, error) {
+func new_controller(string, devices.Options) (devices.Controller, error) {
 	return &test_controller{}, nil
 }
 
@@ -133,7 +133,7 @@ func (t *test_device) Another(context.Context) error {
 	return nil
 }
 
-func new_device(string) (devices.Device, error) {
+func new_device(string, devices.Options) (devices.Device, error) {
 	return &test_device{out: os.Stderr}, nil
 }
 
@@ -306,17 +306,17 @@ func setupSchedules(t *testing.T, yp datetime.YearAndPlace, config string) (spec
 	logger = slog.New(slog.NewJSONHandler(logRecorder, nil))
 
 	supportedDevices := devices.SupportedDevices{
-		"device": func(typ string) (devices.Device, error) {
+		"device": func(string, devices.Options) (devices.Device, error) {
 			return &test_device{out: deviceRecorder}, nil
 		},
-		"slow_device": func(typ string) (devices.Device, error) {
+		"slow_device": func(string, devices.Options) (devices.Device, error) {
 			return &slow_test_device{
 				test_device: test_device{out: deviceRecorder},
 				timeout:     time.Millisecond * 10,
 				delay:       time.Minute,
 			}, nil
 		},
-		"hanging_device": func(typ string) (devices.Device, error) {
+		"hanging_device": func(string, devices.Options) (devices.Device, error) {
 			return &slow_test_device{
 				test_device: test_device{out: deviceRecorder},
 				timeout:     time.Hour,

@@ -92,13 +92,13 @@ detail: my-device
 `
 
 var supportedControllers = devices.SupportedControllers{
-	"controller": func(typ string) (devices.Controller, error) {
+	"controller": func(string, ...devices.Option) (devices.Controller, error) {
 		return &controller{}, nil
 	},
 }
 
 var supportedDevices = devices.SupportedDevices{
-	"device": func(typ string) (devices.Device, error) {
+	"device": func(string, ...devices.Option) (devices.Device, error) {
 		return &device{}, nil
 	},
 }

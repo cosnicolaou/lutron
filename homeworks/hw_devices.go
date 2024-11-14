@@ -13,17 +13,17 @@ import (
 )
 
 type hwDeviceBase struct {
-	deviceConfig devices.DeviceConfigCommon
-	controller   devices.Controller
-	processor    *qsProcessor
+	devices.DeviceConfigCommon
+	controller devices.Controller
+	processor  *qsProcessor
 }
 
 func (d *hwDeviceBase) SetConfig(c devices.DeviceConfigCommon) {
-	d.deviceConfig = c
+	d.DeviceConfigCommon = c
 }
 
 func (d *hwDeviceBase) Config() devices.DeviceConfigCommon {
-	return d.deviceConfig
+	return d.DeviceConfigCommon
 }
 
 func (d *hwDeviceBase) SetController(c devices.Controller) {
@@ -32,7 +32,7 @@ func (d *hwDeviceBase) SetController(c devices.Controller) {
 }
 
 func (d *hwDeviceBase) ControlledByName() string {
-	return d.deviceConfig.Controller
+	return d.Controller
 }
 
 func (d *hwDeviceBase) ControlledBy() devices.Controller {
@@ -51,14 +51,14 @@ func (d *hwDeviceBase) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
-type hwBlindConfig struct {
-	ID    string `yaml:"id"`
-	Level int    `yaml:"level"`
+type HWBlindConfig struct {
+	ID    int `yaml:"id"`
+	Level int `yaml:"level"`
 }
 
 type hwBlind struct {
 	hwDeviceBase
-	hwBlindConfig
+	HWBlindConfig
 }
 
 func (b *hwBlind) Operations() map[string]devices.Operation {
@@ -77,8 +77,5 @@ func (b *hwBlind) level(context.Context) error {
 }
 
 func (d *hwBlind) UnmarshalYAML(node *yaml.Node) error {
-	if err := node.Decode(&d.hwBlindConfig); err != nil {
-		return err
-	}
-	return nil
+	return node.Decode(&d.HWBlindConfig)
 }
