@@ -1,3 +1,7 @@
+// Copyright 2024 Cosmos Nicolaou. All rights reserved.
+// Use of this source code is governed by the Apache-2.0
+// license that can be found in the LICENSE file.
+
 package schedule
 
 import (
@@ -9,6 +13,7 @@ import (
 	"cloudeng.io/cmdutil/keystore"
 	"cloudeng.io/datetime"
 	"cloudeng.io/datetime/schedule"
+	"github.com/cosnicolaou/lutron/devices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -70,59 +75,25 @@ type actionScheduleConfig struct {
 	Actions map[string]timeOfDay `yaml:"actions" cmd:"the actions to be taken when the schedule is current"`
 }
 
-type ControllerConfigCommon struct {
-	Name string `yaml:"name"`
-	Type string `yaml:"type"`
-}
-
-type ControllerConfig struct {
-	ControllerConfigCommon
-	Config yaml.Node `yaml:",inline"`
-}
-
-func (lp *ControllerConfig) UnmarshalYAML(node *yaml.Node) error {
-	if err := node.Decode(&lp.ControllerConfigCommon); err != nil {
-		return err
-	}
-	return node.Decode(&lp.Config)
-}
-
-type DeviceConfigCommon struct {
-	Name       string `yaml:"name"`
-	Type       string `yaml:"type"`
-	Controller string `yaml:"controller"`
-}
-
-type DeviceConfig struct {
-	DeviceConfigCommon
-	Config yaml.Node `yaml:",inline"`
-}
-
-func (lp *DeviceConfig) UnmarshalYAML(node *yaml.Node) error {
-	if err := node.Decode(&lp.DeviceConfigCommon); err != nil {
-		return err
-	}
-	return node.Decode(&lp.Config)
-}
-
 type config struct {
-	Location    string                 `yaml:"location" cmd:"the location for which the schedule is being created in time.Location format"`
-	Controllers []ControllerConfig     `yaml:"controllers" cmd:"the controllers that are being configured"`
-	Devices     []DeviceConfig         `yaml:"devices" cmd:"the devices that are being configured"`
-	Schedules   []actionScheduleConfig `yaml:"schedules" cmd:"the schedules"`
+	Location    string                     `yaml:"location" cmd:"the location for which the schedule is being created in time.Location format"`
+	Controllers []devices.ControllerConfig `yaml:"controllers" cmd:"the controllers that are being configured"`
+	Devices     []devices.DeviceConfig     `yaml:"devices" cmd:"the devices that are being configured"`
+	Schedules   []actionScheduleConfig     `yaml:"schedules" cmd:"the schedules"`
 }
 
 type Action struct {
 	DeviceName string
-	Device     Device
+	Device     devices.Device
 	ActionName string
-	Action     Operation
+	Action     devices.Operation
+	Parameters []string
 }
 
 type Schedules struct {
 	datetime.YearAndPlace
-	Controllers []ControllerConfig
-	Devices     []DeviceConfig
+	Controllers []devices.ControllerConfig
+	Devices     []devices.DeviceConfig
 	Schedules   []schedule.Annual[Action]
 }
 

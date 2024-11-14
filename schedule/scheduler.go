@@ -1,3 +1,7 @@
+// Copyright 2024 Cosmos Nicolaou. All rights reserved.
+// Use of this source code is governed by the Apache-2.0
+// license that can be found in the LICENSE file.
+
 package schedule
 
 import (
@@ -12,6 +16,7 @@ import (
 
 	"cloudeng.io/datetime"
 	"cloudeng.io/datetime/schedule"
+	"github.com/cosnicolaou/lutron/devices"
 )
 
 var OpTimeout = errors.New("op-timeout")
@@ -139,7 +144,7 @@ func WithLogger(l *slog.Logger) Option {
 }
 
 // NewScheduler creates a new scheduler for the supplied schedule and associated devices.
-func NewScheduler(sched schedule.Annual[Action], place *time.Location, devices map[string]Device, opts ...Option) (*Scheduler, error) {
+func NewScheduler(sched schedule.Annual[Action], place *time.Location, devices map[string]devices.Device, opts ...Option) (*Scheduler, error) {
 	scheduler := &Scheduler{
 		schedule: sched,
 		place:    place,
@@ -151,7 +156,7 @@ func NewScheduler(sched schedule.Annual[Action], place *time.Location, devices m
 		scheduler.timeSource = systemTimeSource{}
 	}
 	if scheduler.logger == nil {
-		scheduler.logger = NewLogger(os.Stderr, nil)
+		scheduler.logger = slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	}
 	for i, a := range sched.Actions {
 		dev := devices[a.Action.DeviceName]
@@ -174,7 +179,7 @@ type MasterScheduler struct {
 	schedulers []*Scheduler
 }
 
-func CreateMasterScheduler(schedules []Schedules, devices map[string]Device, opts ...Option) (*MasterScheduler, error) {
+func CreateMasterScheduler(schedules []Schedules, devices map[string]devices.Device, opts ...Option) (*MasterScheduler, error) {
 	schedulers := make([]*Scheduler, 0, len(schedules))
 	for _, sched := range schedules {
 		_ = sched

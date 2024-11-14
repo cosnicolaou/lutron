@@ -1,3 +1,7 @@
+// Copyright 2024 Cosmos Nicolaou. All rights reserved.
+// Use of this source code is governed by the Apache-2.0
+// license that can be found in the LICENSE file.
+
 package schedule_test
 
 import (
@@ -14,6 +18,7 @@ import (
 
 	"cloudeng.io/datetime"
 	"cloudeng.io/errors"
+	"github.com/cosnicolaou/lutron/devices"
 	"github.com/cosnicolaou/lutron/schedule"
 	"gopkg.in/yaml.v3"
 )
@@ -24,7 +29,7 @@ type controlConfigSpecific struct {
 }
 
 type controllerConfig struct {
-	schedule.ControllerConfigCommon
+	devices.ControllerConfigCommon
 	cfg controlConfigSpecific
 }
 
@@ -32,11 +37,11 @@ type test_controller struct {
 	controllerConfig
 }
 
-func (t *test_controller) SetConfig(c schedule.ControllerConfigCommon) {
+func (t *test_controller) SetConfig(c devices.ControllerConfigCommon) {
 	t.controllerConfig.ControllerConfigCommon = c
 }
 
-func (t *test_controller) Config() schedule.ControllerConfigCommon {
+func (t *test_controller) Config() devices.ControllerConfigCommon {
 	return t.controllerConfig.ControllerConfigCommon
 }
 
@@ -51,7 +56,7 @@ func (t *test_controller) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
-func new_controller(typ string) (schedule.Controller, error) {
+func new_controller(typ string) (devices.Controller, error) {
 	return &test_controller{}, nil
 }
 
@@ -63,21 +68,21 @@ type deviceConfigSpecifc struct {
 }
 
 type deviceConfig struct {
-	schedule.DeviceConfigCommon
+	devices.DeviceConfigCommon
 	cfg deviceConfigSpecifc
 }
 
 type test_device struct {
 	deviceConfig
-	ctrl schedule.Controller
+	ctrl devices.Controller
 	out  io.Writer
 }
 
-func (t *test_device) SetConfig(c schedule.DeviceConfigCommon) {
+func (t *test_device) SetConfig(c devices.DeviceConfigCommon) {
 	t.deviceConfig.DeviceConfigCommon = c
 }
 
-func (t *test_device) Config() schedule.DeviceConfigCommon {
+func (t *test_device) Config() devices.DeviceConfigCommon {
 	return t.deviceConfig.DeviceConfigCommon
 }
 
@@ -85,7 +90,7 @@ func (t *test_device) UnmarshalYAML(node *yaml.Node) error {
 	return node.Decode(&t.deviceConfig.cfg)
 }
 
-func (t *test_device) SetController(c schedule.Controller) {
+func (t *test_device) SetController(c devices.Controller) {
 	t.ctrl = c
 }
 
@@ -93,7 +98,7 @@ func (t *test_device) ControlledByName() string {
 	return t.DeviceConfigCommon.Controller
 }
 
-func (t *test_device) ControlledBy() schedule.Controller {
+func (t *test_device) ControlledBy() devices.Controller {
 	return t.ctrl
 }
 
@@ -101,8 +106,8 @@ func (t *test_device) Implementation() any {
 	return t
 }
 
-func (t *test_device) Operations() map[string]schedule.Operation {
-	return map[string]schedule.Operation{
+func (t *test_device) Operations() map[string]devices.Operation {
+	return map[string]devices.Operation{
 		"on":      t.On,
 		"off":     t.Off,
 		"another": t.Another,
@@ -128,7 +133,7 @@ func (t *test_device) Another(context.Context) error {
 	return nil
 }
 
-func new_device(string) (schedule.Device, error) {
+func new_device(string) (devices.Device, error) {
 	return &test_device{out: os.Stderr}, nil
 }
 
@@ -138,8 +143,8 @@ type slow_test_device struct {
 	delay   time.Duration
 }
 
-func (st *slow_test_device) Operations() map[string]schedule.Operation {
-	return map[string]schedule.Operation{
+func (st *slow_test_device) Operations() map[string]devices.Operation {
+	return map[string]devices.Operation{
 		"on": st.On,
 	}
 }
@@ -153,11 +158,11 @@ func (st *slow_test_device) On(context.Context) error {
 	return nil
 }
 
-var supportedDevices = schedule.SupportedDevices{
+var supportedDevices = devices.SupportedDevices{
 	"device": new_device,
 }
 
-var supportedControllers = schedule.SupportedControllers{
+var supportedControllers = devices.SupportedControllers{
 	"controller": new_controller,
 }
 
@@ -168,7 +173,7 @@ func TestBuildDevices(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	controllers, devices, err := schedule.BuildDevices(spec.Controllers, spec.Devices, supportedControllers, supportedDevices)
+	controllers, devices, err := devices.BuildDevices(spec.Controllers, spec.Devices, supportedControllers, supportedDevices)
 
 	if got, want := len(controllers), 1; got != want {
 		t.Errorf("got %d, want %d", got, want)
@@ -290,7 +295,7 @@ func newRecorder() *recorder {
 	return &recorder{out: bytes.NewBuffer(nil)}
 }
 
-func setupSchedules(t *testing.T, yp datetime.YearAndPlace, config string) (spec schedule.Schedules, devices map[string]schedule.Device, deviceRecorder, logRecorder *recorder, logger *slog.Logger) {
+func setupSchedules(t *testing.T, yp datetime.YearAndPlace, config string) (spec schedule.Schedules, devs map[string]devices.Device, deviceRecorder, logRecorder *recorder, logger *slog.Logger) {
 	_, spec, err := schedule.ParseConfig(context.Background(), yp, []byte(auth_config), []byte(config))
 	if err != nil {
 		t.Fatal(err)
@@ -298,20 +303,20 @@ func setupSchedules(t *testing.T, yp datetime.YearAndPlace, config string) (spec
 
 	deviceRecorder = newRecorder()
 	logRecorder = newRecorder()
-	logger = schedule.NewLogger(logRecorder, nil)
+	logger = slog.New(slog.NewJSONHandler(logRecorder, nil))
 
-	supportedDevices := schedule.SupportedDevices{
-		"device": func(typ string) (schedule.Device, error) {
+	supportedDevices := devices.SupportedDevices{
+		"device": func(typ string) (devices.Device, error) {
 			return &test_device{out: deviceRecorder}, nil
 		},
-		"slow_device": func(typ string) (schedule.Device, error) {
+		"slow_device": func(typ string) (devices.Device, error) {
 			return &slow_test_device{
 				test_device: test_device{out: deviceRecorder},
 				timeout:     time.Millisecond * 10,
 				delay:       time.Minute,
 			}, nil
 		},
-		"hanging_device": func(typ string) (schedule.Device, error) {
+		"hanging_device": func(typ string) (devices.Device, error) {
 			return &slow_test_device{
 				test_device: test_device{out: deviceRecorder},
 				timeout:     time.Hour,
@@ -320,12 +325,12 @@ func setupSchedules(t *testing.T, yp datetime.YearAndPlace, config string) (spec
 		},
 	}
 
-	_, devices, err = schedule.BuildDevices(spec.Controllers, spec.Devices, supportedControllers, supportedDevices)
+	_, devs, err = devices.BuildDevices(spec.Controllers, spec.Devices, supportedControllers, supportedDevices)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	return spec, devices, deviceRecorder, logRecorder, logger
+	return spec, devs, deviceRecorder, logRecorder, logger
 }
 
 func TestScheduler(t *testing.T) {

@@ -1,8 +1,13 @@
-package schedule
+// Copyright 2024 Cosmos Nicolaou. All rights reserved.
+// Use of this source code is governed by the Apache-2.0
+// license that can be found in the LICENSE file.
+
+package devices
 
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -28,9 +33,15 @@ type Device interface {
 	Timeout() time.Duration
 }
 
-type SupportedControllers map[string]func(typ string) (Controller, error)
+type Option func(*Options)
 
-type SupportedDevices map[string]func(typ string) (Device, error)
+type Options struct {
+	Logger *slog.Logger
+}
+
+type SupportedControllers map[string]func(typ string, opts ...Option) (Controller, error)
+
+type SupportedDevices map[string]func(typ string, opts ...Option) (Device, error)
 
 func BuildDevices(controllerCfg []ControllerConfig, deviceCfg []DeviceConfig, supportedControllers SupportedControllers, supportedDevices SupportedDevices) (map[string]Controller, map[string]Device, error) {
 	controllers, err := CreateControllers(controllerCfg, supportedControllers)
