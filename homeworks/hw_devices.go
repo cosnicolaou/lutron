@@ -6,50 +6,10 @@ package homeworks
 
 import (
 	"context"
-	"time"
 
 	"github.com/cosnicolaou/lutron/devices"
 	"gopkg.in/yaml.v3"
 )
-
-type hwDeviceBase struct {
-	devices.DeviceConfigCommon
-	controller devices.Controller
-	processor  *qsProcessor
-}
-
-func (d *hwDeviceBase) SetConfig(c devices.DeviceConfigCommon) {
-	d.DeviceConfigCommon = c
-}
-
-func (d *hwDeviceBase) Config() devices.DeviceConfigCommon {
-	return d.DeviceConfigCommon
-}
-
-func (d *hwDeviceBase) SetController(c devices.Controller) {
-	d.controller = c
-	d.processor = c.Implementation().(*qsProcessor)
-}
-
-func (d *hwDeviceBase) ControlledByName() string {
-	return d.Controller
-}
-
-func (d *hwDeviceBase) ControlledBy() devices.Controller {
-	return d.controller
-}
-
-func (d *hwDeviceBase) Implementation() any {
-	return d
-}
-
-func (d *hwDeviceBase) Timeout() time.Duration {
-	return time.Minute
-}
-
-func (d *hwDeviceBase) UnmarshalYAML(node *yaml.Node) error {
-	return nil
-}
 
 type HWBlindConfig struct {
 	ID    int `yaml:"id"`
@@ -68,11 +28,15 @@ func (b *hwBlind) Operations() map[string]devices.Operation {
 	}
 }
 
-func (b *hwBlind) raise(context.Context) error {
+func (b *hwBlind) CustomConfig() any {
+	return b.HWBlindConfig
+}
+
+func (b *hwBlind) raise(context.Context, ...string) error {
 	return nil
 }
 
-func (b *hwBlind) level(context.Context) error {
+func (b *hwBlind) level(context.Context, ...string) error {
 	return nil
 }
 

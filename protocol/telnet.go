@@ -12,17 +12,19 @@ import (
 	"github.com/ziutek/telnet"
 )
 
-type Transport interface {
-	Send(text string) error
-	ReadUntil(text string) (string, error)
-	Expect(text string) error
-	Close() error
-}
-
 type telnetConn struct {
 	conn    *telnet.Conn
 	timeout time.Duration
 	logger  *slog.Logger
+}
+
+func DialTelnet(addr string, timeout time.Duration, logger *slog.Logger) (Transport, error) {
+	conn, err := telnet.Dial("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	logger = logger.With("addr", conn.RemoteAddr().String())
+	return &telnetConn{conn: conn, timeout: timeout, logger: logger}, nil
 }
 
 func (tc *telnetConn) Send(text string) error {
@@ -30,27 +32,26 @@ func (tc *telnetConn) Send(text string) error {
 		return err
 	}
 	buf := slices.Clone([]byte(text))
-	buf = append(buf, '\r', '\n')
 	_, err := tc.conn.Write(buf)
 	tc.logger.Info("sent", "text", text, "err", err)
 	return err
 }
 
-func (tc *telnetConn) ReadUntil(text string) (string, error) {
+func (tc *telnetConn) ReadUntil(text ...string) (string, error) {
 	if err := tc.conn.SetReadDeadline(time.Now().Add(tc.timeout)); err != nil {
 		return "", err
 	}
-	buf, err := tc.conn.ReadUntil(text)
+	buf, err := tc.conn.ReadUntil(text...)
 	out := string(buf)
 	tc.logger.Info("readUntil", "text", text, "err", err)
 	return out, err
 }
 
-func (tc *telnetConn) Expect(text string) error {
+func (tc *telnetConn) Expect(text ...string) error {
 	if err := tc.conn.SetReadDeadline(time.Now().Add(tc.timeout)); err != nil {
 		return err
 	}
-	err := tc.conn.SkipUntil(text)
+	err := tc.conn.SkipUntil(text...)
 	tc.logger.Info("expect", "text", text, "err", err)
 	return err
 }

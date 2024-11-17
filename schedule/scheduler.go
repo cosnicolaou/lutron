@@ -21,7 +21,7 @@ import (
 
 var OpTimeout = errors.New("op-timeout")
 
-func (s *Scheduler) runOps(ctx context.Context, due time.Time, active schedule.Active[Action]) {
+func (s *Scheduler) runOps(ctx context.Context, due time.Time, active schedule.Active[devices.Action]) {
 	if len(active.Actions) == 0 {
 		return
 	}
@@ -49,11 +49,11 @@ func (s *Scheduler) runOps(ctx context.Context, due time.Time, active schedule.A
 	}
 }
 
-func (s *Scheduler) Scheduled(yp datetime.YearAndPlace) iter.Seq[schedule.Active[Action]] {
+func (s *Scheduler) Scheduled(yp datetime.YearAndPlace) iter.Seq[schedule.Active[devices.Action]] {
 	return s.scheduler.Scheduled(yp)
 }
 
-func actionAndDeviceNames(active schedule.Active[Action]) (actionNames, deviceNames []string) {
+func actionAndDeviceNames(active schedule.Active[devices.Action]) (actionNames, deviceNames []string) {
 	for _, a := range active.Actions {
 		actionNames = append(actionNames, a.Action.ActionName)
 		deviceNames = append(deviceNames, a.Action.DeviceName)
@@ -103,8 +103,8 @@ func (s *Scheduler) RunYears(ctx context.Context, yp datetime.YearAndPlace, nYea
 
 type Scheduler struct {
 	options
-	schedule  schedule.Annual[Action]
-	scheduler *schedule.AnnualScheduler[Action]
+	schedule  schedule.Annual[devices.Action]
+	scheduler *schedule.AnnualScheduler[devices.Action]
 	place     *time.Location
 }
 
@@ -144,7 +144,7 @@ func WithLogger(l *slog.Logger) Option {
 }
 
 // NewScheduler creates a new scheduler for the supplied schedule and associated devices.
-func NewScheduler(sched schedule.Annual[Action], place *time.Location, devices map[string]devices.Device, opts ...Option) (*Scheduler, error) {
+func NewScheduler(sched schedule.Annual[devices.Action], place *time.Location, devices map[string]devices.Device, opts ...Option) (*Scheduler, error) {
 	scheduler := &Scheduler{
 		schedule: sched,
 		place:    place,

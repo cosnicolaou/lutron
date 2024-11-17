@@ -12,6 +12,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/cosnicolaou/lutron/protocol"
 	"github.com/reiver/go-telnet"
@@ -41,13 +42,19 @@ func TestClient(t *testing.T) {
 		wg.Wait()
 	}()
 
-	addr := server.Addr().String()
-
 	logRecorder := bytes.NewBuffer(nil)
 	logger := slog.New(slog.NewJSONHandler(logRecorder, nil))
-	session := protocol.NewSession()
+	addr := server.Addr().String()
+
+	transport, err := protocol.DialTelnet(addr, time.Minute, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	session := protocol.NewSession(transport)
 
 	conn := protocol.New("test-client",
+
 		protocol.WithSession(session),
 		protocol.WithLogger(logger),
 	).Dial(context.Background(), addr)

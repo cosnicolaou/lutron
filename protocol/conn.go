@@ -11,34 +11,53 @@ import (
 	"log/slog"
 	"sync"
 	"time"
-
-	"github.com/ziutek/telnet"
 )
+
+type Transport interface {
+	Send(text string) error
+	ReadUntil(text ...string) (string, error)
+	Expect(text ...string) error
+	Close() error
+}
+
+type Conn interface {
+	//Dial(ctx context.Context, addr string) Conn
+	Run(func(Session) error) Conn
+	Busy() bool
+	Err() error
+	Close() error
+}
+
+type Session interface {
+	//SetTransport(c Transport)
+	//Entries() iter.Seq[string]
+	Run(func(Session) error) Session
+	Close() error
+	Err() error
+	Send(text string)
+	ReadUntil(text ...string) string
+	Expect(text ...string)
+}
 
 type conn struct {
 	options
 	mu sync.Mutex
 }
 
-func New(name string, opts ...Option) Conn {
+func New(name string, transport Transport, opts ...Option) Conn {
 	c := &conn{}
 	c.options.setDefaults()
 	for _, fn := range opts {
 		fn(&c.options)
 	}
 	if c.session == nil {
-		c.session = NewSession()
+		c.session = NewSession(transport)
 	}
+	/*	if c.transport != nil {
+		c.session.SetTransport(c.transport)
+	}*/
 	c.logger = c.logger.With("name", name)
 	return c
-}
-
-type Conn interface {
-	Dial(ctx context.Context, addr string) Conn
-	Run(func(Session) error) Conn
-	Busy() bool
-	Err() error
-	Close() error
 }
 
 type errConn struct {
@@ -67,7 +86,6 @@ func (ec *errConn) Busy() bool {
 
 type options struct {
 	timeout   time.Duration
-	setup     []string
 	logger    *slog.Logger
 	session   Session
 	transport Transport
@@ -83,12 +101,6 @@ type Option func(o *options)
 func WithTimeout(d time.Duration) Option {
 	return func(o *options) {
 		o.timeout = d
-	}
-}
-
-func WithSetup(s ...string) Option {
-	return func(o *options) {
-		o.setup = s
 	}
 }
 
@@ -110,6 +122,7 @@ func WithTransport(t Transport) Option {
 	}
 }
 
+/*
 func (c *conn) Dial(ctx context.Context, addr string) Conn {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -125,7 +138,7 @@ func (c *conn) Dial(ctx context.Context, addr string) Conn {
 	c.session.SetTransport(transport)
 	c.options.transport = transport
 	return c
-}
+}*/
 
 func (c *conn) Run(apply func(Session) error) Conn {
 	c.mu.Lock()

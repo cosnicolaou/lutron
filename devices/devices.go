@@ -7,6 +7,7 @@ package devices
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
@@ -14,18 +15,28 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type Action struct {
+	DeviceName string
+	Device     Device
+	ActionName string
+	Action     Operation
+}
+
 type Controller interface {
 	SetConfig(ControllerConfigCommon)
 	Config() ControllerConfigCommon
+	CustomConfig() any
 	UnmarshalYAML(*yaml.Node) error
+	Operations() map[string]Operation
 	Implementation() any
 }
 
-type Operation func(ctx context.Context) error
+type Operation func(ctx context.Context, args ...string) error
 
 type Device interface {
 	SetConfig(DeviceConfigCommon)
 	Config() DeviceConfigCommon
+	CustomConfig() any
 	SetController(Controller)
 	UnmarshalYAML(*yaml.Node) error
 	ControlledByName() string
@@ -38,6 +49,7 @@ type Option func(*Options)
 
 type Options struct {
 	Logger             *slog.Logger
+	Interactive        io.Writer
 	ProtocolConnection protocol.Conn
 	Custom             any
 }

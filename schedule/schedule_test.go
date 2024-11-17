@@ -24,8 +24,7 @@ import (
 )
 
 type controlConfigSpecific struct {
-	IP    string `yaml:"ip_address"`
-	KeyID string `yaml:"key_id"`
+	IP string `yaml:"ip_address"`
 }
 
 type controllerConfig struct {
@@ -61,7 +60,6 @@ func new_controller(string, devices.Options) (devices.Controller, error) {
 }
 
 type deviceConfigSpecifc struct {
-	KeyID   string `yaml:"key_id"`
 	On      string `yaml:"on"`
 	Off     string `yaml:"off"`
 	Another string `yaml:"another"`
@@ -164,36 +162,6 @@ var supportedDevices = devices.SupportedDevices{
 
 var supportedControllers = devices.SupportedControllers{
 	"controller": new_controller,
-}
-
-func TestBuildDevices(t *testing.T) {
-	ctx := context.Background()
-	yp := datetime.YearAndPlace{Year: 2021}
-	_, spec, err := schedule.ParseConfig(ctx, yp, []byte(auth_config), []byte(simple_config))
-	if err != nil {
-		t.Fatal(err)
-	}
-	controllers, devices, err := devices.BuildDevices(spec.Controllers, spec.Devices, supportedControllers, supportedDevices)
-
-	if got, want := len(controllers), 1; got != want {
-		t.Errorf("got %d, want %d", got, want)
-	}
-	if got, want := len(devices), 2; got != want {
-		t.Errorf("got %d, want %d", got, want)
-	}
-
-	for _, dev := range devices {
-		if got, want := dev.ControlledByName(), "home"; got != want {
-			t.Errorf("got %q, want %q", got, want)
-		}
-		if got, want := dev.ControlledBy(), controllers["home"]; got != want {
-			t.Errorf("got %v, want %v", got, want)
-		}
-	}
-
-	if got, want := devices["living room"].(*test_device).cfg.On, "on command"; got != want {
-		t.Errorf("got %q, want %q", got, want)
-	}
 }
 
 type timesource struct {
