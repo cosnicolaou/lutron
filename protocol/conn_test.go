@@ -9,7 +9,6 @@ import (
 	"context"
 	"log/slog"
 	"net"
-	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -34,6 +33,7 @@ func runServer(t *testing.T, handler telnet.Handler, wg *sync.WaitGroup) net.Lis
 }
 
 func TestClient(t *testing.T) {
+	ctx := context.Background()
 	var wg sync.WaitGroup
 	wg.Add(1)
 	server := runServer(t, telnet.EchoHandler, &wg)
@@ -46,50 +46,33 @@ func TestClient(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(logRecorder, nil))
 	addr := server.Addr().String()
 
-	transport, err := protocol.DialTelnet(addr, time.Minute, logger)
+	transport, err := protocol.DialTelnet(ctx, addr, time.Minute, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	session := protocol.NewSession(transport)
-
-	conn := protocol.New("test-client",
-
-		protocol.WithSession(session),
-		protocol.WithLogger(logger),
-	).Dial(context.Background(), addr)
-
-	err := conn.
-		Run(func(s protocol.Session) error {
-			s.Send("hello")
-			s.Send("world")
-			read := s.ReadUntil("world\r\n")
-			s.Append(read)
-			return s.Err()
-		}).
-		Err()
-	if err != nil {
+	idle := protocol.NewIdleTimer(10 * time.Minute)
+	s := protocol.NewSession(transport, idle)
+	s.Send(ctx, []byte("hello\r\n"))
+	s.Send(ctx, []byte("world\r\n"))
+	read := s.ReadUntil(ctx, "world\r\n")
+	if err := s.Err(); err != nil {
 		t.Fatal(err)
 	}
 
-	err = conn.Run(func(s protocol.Session) error {
-		s.Send("and")
-		s.Send("again")
-		read := s.ReadUntil("again\r\n")
-		s.Append(read)
-		return s.Err()
-	}).Close()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	entries := []string{}
-	for e := range session.Entries() {
-		entries = append(entries, e)
-	}
-	expected := []string{"hello\r\nworld\r\n", "and\r\nagain\r\n"}
-	if got, want := entries, expected; !slices.Equal(got, want) {
+	if got, want := string(read), "hello\r\nworld\r\n"; got != want {
 		t.Fatalf("got %#v, want %#v", got, want)
 	}
+
+	s.Send(ctx, []byte("and\r\n"))
+	s.Send(ctx, []byte("again\r\n"))
+	read = s.ReadUntil(ctx, "again\r\n")
+	if err := s.Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, want := string(read), "and\r\nagain\r\n"; got != want {
+		t.Fatalf("got %#v, want %#v", got, want)
+	}
+
 }

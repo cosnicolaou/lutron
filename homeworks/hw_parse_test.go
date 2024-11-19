@@ -27,7 +27,7 @@ controllers:
 
 devices:
   - name: living room
-    type: homeworks-blind
+    type: shades
     controller: home
     id: 1
     level: 50
@@ -71,11 +71,11 @@ func TestHWParsing(t *testing.T) {
 	if got, want := dCommSpec, (devices.DeviceConfigCommon{
 		Name:       "living room",
 		Controller: "home",
-		Type:       "homeworks-blind"}); !reflect.DeepEqual(got, want) {
+		Type:       "shades"}); !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 
-	cSpec := homeworks.GetQSProcessorConfig(ctrls["home"])
+	cSpec := ctrls["home"].CustomConfig().(homeworks.QSProcessorConfig)
 	if got, want := cSpec, (homeworks.QSProcessorConfig{
 		IPAddress: "192.168.1.50",
 		Timeout:   time.Minute,
@@ -84,8 +84,8 @@ func TestHWParsing(t *testing.T) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 
-	dSpec := homeworks.GetBlindConfig(devs["living room"])
-	if got, want := dSpec, (homeworks.HWBlindConfig{
+	dSpec := devs["living room"].CustomConfig().(homeworks.HWShadeGroupConfig)
+	if got, want := dSpec, (homeworks.HWShadeGroupConfig{
 		ID:    1,
 		Level: 50}); !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)

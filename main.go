@@ -28,7 +28,8 @@ commands:
   - name: config
     summary: query/inspect the configuration file
     commands:
-	  - name: display
+      - name: display
+      - name: operations
 `
 
 func cli() *subcmd.CommandSetYAML {
@@ -37,6 +38,8 @@ func cli() *subcmd.CommandSetYAML {
 	cmd.Set("control").MustRunner(control.Run, &ControlFlags{})
 	config := &Config{}
 	cmd.Set("config", "display").MustRunner(config.Display, &ConfigFlags{})
+	cmd.Set("config", "operations").MustRunner(config.Operations, &ConfigFlags{})
+
 	return cmd
 }
 
@@ -59,5 +62,7 @@ func main() {
 	if context.Cause(ctx) == interrupt {
 		cmdutil.Exit("%v", interrupt)
 	}
-	cmdutil.Exit("%v", err)
+	if err != nil {
+		cmdutil.Exit("%v", err)
+	}
 }

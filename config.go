@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/cosnicolaou/lutron/devices"
@@ -18,13 +19,8 @@ type ConfigFileFlags struct {
 	SystemFile string `subcmd:"system,$HOME/.lutron-system.yaml,path to a file containing the lutron system configuration"`
 }
 
-type LocationFlag struct {
-	Location string `subcmd:"location,,timezone location of the device to control"`
-}
-
 type ConfigFlags struct {
 	ConfigFileFlags
-	LocationFlag
 }
 
 type Config struct {
@@ -46,7 +42,8 @@ func (c *Config) Display(ctx context.Context, flags any, args []string) error {
 	if err != nil {
 		return err
 	}
-	system, err := devices.ParseSystemConfigFile(ctx, fv.Location, fv.SystemFile)
+
+	system, err := devices.ParseSystemConfigFile(ctx, "", fv.SystemFile)
 	if err != nil {
 		return err
 	}
@@ -69,5 +66,54 @@ func (c *Config) Display(ctx context.Context, flags any, args []string) error {
 		fmt.Printf("Device Custom Config: %v\n", marshalYAML("  ", device.CustomConfig()))
 	}
 
+	return nil
+}
+
+func opNames[Map ~map[string]V, V any](m Map) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+func (c *Config) Operations(ctx context.Context, flags any, args []string) error {
+	fv := flags.(*ConfigFlags)
+	system, err := devices.ParseSystemConfigFile(ctx, "", fv.SystemFile)
+	if err != nil {
+		return err
+	}
+
+	for _, cfg := range system.Config.Controllers {
+		available := system.Controllers[cfg.Name].Operations()
+		sorted := opNames(available)
+		fmt.Printf("Controller: %v\n", cfg.Name)
+		for _, op := range sorted {
+			_, configured := cfg.Operations[op]
+			if !configured {
+				fmt.Printf("  %v: but not configured\n", op)
+				continue
+			}
+			h := system.Controllers[cfg.Name].OperationsHelp()[op]
+			fmt.Printf("  %v:  %v\n", op, h)
+
+		}
+	}
+
+	for _, cfg := range system.Config.Devices {
+		available := system.Devices[cfg.Name].Operations()
+		sorted := opNames(available)
+		fmt.Printf("Device: %v\n", cfg.Name)
+		for _, op := range sorted {
+			_, configured := cfg.Operations[op]
+			if !configured {
+				fmt.Printf("  %v: but not configured\n", op)
+				continue
+			}
+			h := system.Devices[cfg.Name].OperationsHelp()[op]
+			fmt.Printf("  %v:  %v\n", op, h)
+		}
+	}
 	return nil
 }

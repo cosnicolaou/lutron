@@ -17,7 +17,6 @@ import (
 
 type ControlFlags struct {
 	ConfigFileFlags
-	LocationFlag
 }
 
 type Control struct{}
@@ -28,27 +27,31 @@ func (c *Control) runOp(ctx context.Context, system devices.System, nameAndOp st
 		return fmt.Errorf("invalid operation: %v, should be name.operation", nameAndOp)
 	}
 	name, op := parts[0], parts[1]
-	if ctrl, ok := system.Controllers[name]; ok {
-		if fn, ok := ctrl.Operations()[op]; ok {
-			if err := fn(ctx, args...); err != nil {
-				return fmt.Errorf("failed to run operation: %v: %v", op, err)
-			}
-			return nil
-		} else {
-			return fmt.Errorf("unknown operation: %v for controller: %v", op, name)
-		}
+	_, cok := system.Controllers[name]
+	_, dok := system.Devices[name]
+	if !cok && !dok {
+		return fmt.Errorf("unknown controller or device: %v", name)
 	}
-	if dev, ok := system.Devices[name]; ok {
-		if fn, ok := dev.Operations()[op]; ok {
-			if err := fn(ctx, args...); err != nil {
-				return fmt.Errorf("failed to run operation: %v: %v", op, err)
-			}
-			return nil
-		} else {
-			return fmt.Errorf("unknown operation: %v for device: %v", op, name)
+
+	if fn, pars, ok := system.ControllerOp(name, op); ok {
+		if len(args) == 0 {
+			args = pars
 		}
+		if err := fn(ctx, os.Stdout, args...); err != nil {
+			return fmt.Errorf("failed to run operation: %v: %v", op, err)
+		}
+		return nil
 	}
-	return fmt.Errorf("unknown controller or device: %v", name)
+	if fn, pars, ok := system.DeviceOp(name, op); ok {
+		if len(args) == 0 {
+			args = pars
+		}
+		if err := fn(ctx, os.Stdout, args...); err != nil {
+			return fmt.Errorf("failed to run operation: %v: %v", op, err)
+		}
+		return nil
+	}
+	return fmt.Errorf("unknown or not configured operation: %v, %v", name, op)
 }
 
 func (c *Control) Run(ctx context.Context, flags any, args []string) error {
@@ -61,7 +64,7 @@ func (c *Control) Run(ctx context.Context, flags any, args []string) error {
 	if err != nil {
 		return err
 	}
-	system, err := devices.ParseSystemConfigFile(ctx, fv.Location, fv.SystemFile, opts...)
+	system, err := devices.ParseSystemConfigFile(ctx, " ", fv.SystemFile, opts...)
 	if err != nil {
 		return err
 	}

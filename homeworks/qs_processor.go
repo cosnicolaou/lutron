@@ -7,7 +7,10 @@ package homeworks
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,13 +33,18 @@ type QSProcessor struct {
 	devices.ControllerConfigCommon
 	QSProcessorConfig `yaml:",inline"`
 	logger            *slog.Logger
-	conn              *conn
+
+	mu           sync.Mutex
+	idle         *protocol.IdleTimer
+	session      protocol.Session
+	closeContext context.Context
+	closeCancel  context.CancelFunc
+	closeCh      chan struct{}
 }
 
 func NewQSProcessor(opts devices.Options) *QSProcessor {
 	return &QSProcessor{
 		logger: opts.Logger,
-		conn:   &conn{opts: opts},
 	}
 }
 
@@ -63,39 +71,105 @@ func (p *QSProcessor) Implementation() any {
 	return p
 }
 
-func (p *QSProcessor) SystemQuery(ctx context.Context, action protocol.SystemActions) (string, error) {
-	c, err := p.connection(ctx)
-	if err != nil {
-		return "", err
+func (p *QSProcessor) Operations() map[string]devices.Operation {
+	return map[string]devices.Operation{
+		"gettime": func(ctx context.Context, out io.Writer, args ...string) error {
+			t, err := p.GetTime(ctx)
+			if out != nil && err == nil {
+				fmt.Fprintf(out, "gettime: %v\n", t)
+			}
+			return err
+		},
+		"getlocation": func(ctx context.Context, out io.Writer, args ...string) error {
+			lat, long, err := p.GetLatLong(ctx)
+			if out != nil && err == nil {
+				fmt.Fprintf(out, "latlong: %vN %vW\n", lat, long)
+			}
+			return err
+		},
+		"getsuntimes": func(ctx context.Context, out io.Writer, args ...string) error {
+			rise, set, err := p.GetSunriseSunset(ctx)
+			if out != nil && err == nil {
+				fmt.Fprintf(out, "sunrise: %v, sunset: %v\n",
+					rise.Format("15:04:05"), set.Format("15:04:05"))
+			}
+			return err
+		},
+		"os_version": func(ctx context.Context, out io.Writer, args ...string) error {
+			osv, err := p.Version(ctx)
+			if out != nil && err == nil {
+				fmt.Fprintf(out, "%v\n", osv)
+			}
+			return err
+		},
 	}
-	var response string
-	err = c.Run(func(s protocol.Session) error {
-		var err error
-		response, err = protocol.System(s, false, action)
-		return err
-	}).Err()
+}
+
+func (p *QSProcessor) OperationsHelp() map[string]string {
+	return map[string]string{
+		"gettime":     "get the current time, date and timezone",
+		"getlocation": "get the current location in latitude and longitude",
+		"getsuntimes": "get the current sunrise and sunset times in local time",
+		"os_version":  "get the OS version running on QS processor",
+	}
+}
+
+func (p *QSProcessor) SystemQuery(ctx context.Context, action protocol.SystemActions) (string, error) {
+	s := p.Session(ctx)
+	response, err := protocol.System(ctx, s, false, action)
 	if err != nil {
 		return "", fmt.Errorf("QSProcessor.System: %v: %v", action, err)
 	}
 	return response, nil
 }
 
-func (p *QSProcessor) Operations() map[string]devices.Operation {
-	return map[string]devices.Operation{
-		"gettime": func(ctx context.Context, args ...string) error {
-			t, err := p.GetTime(ctx)
-			fmt.Printf("TIME: %v\n", t)
-			return err
-		},
+func (p *QSProcessor) GetLatLong(ctx context.Context) (float64, float64, error) {
+	latlong, err := p.SystemQuery(ctx, protocol.SystemLatLong)
+	if err != nil {
+		return 0, 0, err
 	}
+	parts := strings.Split(latlong, ",")
+	if len(parts) != 2 {
+		return 0, 0, fmt.Errorf("unexpected response: %v", latlong)
+	}
+	lat, err := strconv.ParseFloat(parts[0], 64)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to parse latitude: %v", err)
+	}
+	long, err := strconv.ParseFloat(parts[1], 64)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to parse longitude: %v", err)
+	}
+	return lat, long, nil
+}
+
+func (p *QSProcessor) GetSunriseSunset(ctx context.Context) (time.Time, time.Time, error) {
+	sunrise, err := p.SystemQuery(ctx, protocol.SystemSunrise)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	sunset, err := p.SystemQuery(ctx, protocol.SystemSunset)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	sunriseT, err := time.Parse("15:04:05", sunrise)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	sunsetT, err := time.Parse("15:04:05", sunset)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	return sunriseT, sunsetT, nil
 }
 
 func (p *QSProcessor) GetTime(ctx context.Context) (time.Time, error) {
-	tod, err := p.SystemQuery(ctx, protocol.SystemTime)
+	date, err := p.SystemQuery(ctx, protocol.SystemDate)
 	if err != nil {
 		return time.Time{}, err
 	}
-	date, err := p.SystemQuery(ctx, protocol.SystemDate)
+	tod, err := p.SystemQuery(ctx, protocol.SystemTime)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -103,87 +177,89 @@ func (p *QSProcessor) GetTime(ctx context.Context) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, err
 	}
-	todT, err := time.Parse("15:04:05", tod)
+	tzn := protocol.NormalizeTimeZone(tz)
+	sysTime, err := time.Parse("01/02/2006 15:04:05 -07:00", date+" "+tod+" "+tzn)
 	if err != nil {
 		return time.Time{}, err
 	}
-	dateT, err := time.Parse("01/02/06", date)
+	return sysTime, nil
+}
+
+func (p *QSProcessor) Version(ctx context.Context) (string, error) {
+	data, err := p.SystemQuery(ctx, protocol.SystemOSRev)
 	if err != nil {
-		return time.Time{}, err
+		return "", err
 	}
-	loc, err := time.LoadLocation(tz)
+	return data, nil
+}
+
+// Session returns an authenticated session to the QS processor. If
+// an error is encountered then an error session is returned.
+func (p *QSProcessor) Session(ctx context.Context) protocol.Session {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.session != nil {
+		return p.session
+	}
+	transport, err := protocol.DialTelnet(ctx, p.IPAddress, p.Timeout, p.logger)
 	if err != nil {
-		return time.Time{}, err
+		return protocol.NewErrorSession(err)
 	}
-	return time.Date(dateT.Year(), dateT.Month(), dateT.Day(), todT.Hour(), todT.Minute(), todT.Second(), 0, loc), nil
-}
+	p.idle = protocol.NewIdleTimer(p.KeepAlive)
+	p.session = protocol.NewSession(transport, p.idle)
 
-func (p *QSProcessor) connection(ctx context.Context) (protocol.Conn, error) {
-	return p.conn.conn(ctx, p.ControllerConfigCommon, p.QSProcessorConfig)
-}
-
-type conn struct {
-	sync.Mutex
-	opts  devices.Options
-	pconn protocol.Conn
-}
-
-func (c *conn) conn(ctx context.Context, cfgBase devices.ControllerConfigCommon,
-	cfg QSProcessorConfig) (protocol.Conn, error) {
-	c.Lock()
-	defer c.Unlock()
-	if c.pconn != nil {
-		// use lslog here.
-		fmt.Printf("reusing connection to %s: (err %v)\n", cfg.IPAddress, c.pconn.Err())
-		return c.pconn, c.pconn.Err()
+	// Authenticate
+	keys := keystore.AuthFromContextForID(ctx, p.KeyID)
+	err = protocol.QSLogin(ctx, p.session, keys.User, keys.Token)
+	if err != nil {
+		p.session.Close(ctx)
+		p.session = nil
+		p.idle = nil
+		return protocol.NewErrorSession(err)
 	}
-	keys := keystore.AuthFromContextForID(ctx, cfg.KeyID)
+	p.closeContext, p.closeCancel = context.WithCancel(ctx)
+	p.closeCh = make(chan struct{})
+	go p.idleClose(p.closeContext, p.idle)
+	return p.session
+}
 
-	fmt.Printf("connecting to %s: %v\n", cfg.IPAddress, keys.User)
-
-	conn := c.opts.ProtocolConnection
-	if conn == nil {
-		opts := []protocol.Option{protocol.WithTimeout(cfg.Timeout)}
-		if c.opts.Logger != nil {
-			opts = append(opts, protocol.WithLogger(c.opts.Logger))
+func (p *QSProcessor) CloseSession(ctx context.Context) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.session == nil {
+		return nil
+	}
+	err := p.session.Close(ctx)
+	p.session = nil
+	p.idle = nil
+	p.closeCancel()
+	closeTimeout := time.Minute
+	select {
+	case <-p.closeCh:
+	case <-time.After(closeTimeout):
+		if err == nil {
+			err = fmt.Errorf("failed to close session after %v", closeTimeout)
 		}
-		conn = protocol.New(cfgBase.Name, opts...).
-			Dial(context.Background(), cfg.IPAddress)
 	}
-	if conn.Err() != nil {
-		return nil, conn.Err()
-	}
-
-	err := conn.Run(func(s protocol.Session) error {
-		return protocol.QSLogin(s, keys.User, keys.Token)
-	}).Err()
-	if err != nil {
-		return nil, err
-	}
-	c.pconn = conn
-
-	keepalive := cfg.KeepAlive
-	if keepalive == 0 {
-		keepalive = time.Minute * 5
-	}
-	go c.disconnect(ctx, cfg.KeepAlive)
-	return conn, nil
+	return err
 }
 
-func (c *conn) disconnect(ctx context.Context, timeout time.Duration) error {
+func (p *QSProcessor) idleClose(ctx context.Context, idle *protocol.IdleTimer) {
 	for {
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(timeout):
-			c.Lock()
-			defer c.Unlock()
-			if c.pconn.Busy() {
-				continue
+		case <-time.After(idle.Remaining()):
+			if idle.Expired() {
+				p.CloseSession(ctx)
+				return
 			}
-			err := c.pconn.Close()
-			c.pconn = nil
-			return err
+		case <-ctx.Done():
+			return
+		case <-p.closeCh:
+			return
 		}
 	}
+}
+
+func (p *QSProcessor) Close(ctx context.Context) error {
+	return p.CloseSession(ctx)
 }

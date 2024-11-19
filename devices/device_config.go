@@ -89,11 +89,77 @@ type SystemConfig struct {
 }
 
 type System struct {
+	Config      SystemConfig
 	Location    *time.Location
 	Controllers map[string]Controller
 	Devices     map[string]Device
 }
 
+func configuredAndExists(name string, configured map[string][]string, operations map[string]Operation) (Operation, bool) {
+	if ops, ok := configured[name]; ok {
+		for _, op := range ops {
+			if fn, ok := operations[op]; ok {
+				return fn, true
+			}
+		}
+	}
+	return nil, false
+
+}
+
+func (s System) ControllerConfigs(name string) (ControllerConfig, Controller, bool) {
+	if ctrl, ok := s.Controllers[name]; ok {
+		for _, cfg := range s.Config.Controllers {
+			if cfg.Name == name {
+				return cfg, ctrl, true
+			}
+		}
+	}
+	return ControllerConfig{}, nil, false
+}
+
+func (s System) DeviceConfigs(name string) (DeviceConfig, Device, bool) {
+	if dev, ok := s.Devices[name]; ok {
+		for _, cfg := range s.Config.Devices {
+			if cfg.Name == name {
+				return cfg, dev, true
+			}
+		}
+	}
+	return DeviceConfig{}, nil, false
+}
+
+// ControllerOp returns the operation function (and any configured parameters)
+// for the specified operation on the named controller. The operation must be
+// 'configured', ie. listed in the operations: list for the controller to be
+// returned.
+func (s System) ControllerOp(name, op string) (Operation, []string, bool) {
+	if cfg, ctrl, ok := s.ControllerConfigs(name); ok {
+		if fn, ok := ctrl.Operations()[op]; ok {
+			if pars, ok := cfg.Operations[op]; ok {
+				return fn, pars, true
+			}
+		}
+	}
+	return nil, nil, false
+}
+
+// DeviceOp returns the operation function (and any configured parameters)
+// for the specified operation on the named controller. The operation must be
+// 'configured', ie. listed in the operations: list for the controller to be
+// returned.
+func (s System) DeviceOp(name, op string) (Operation, []string, bool) {
+	if cfg, dev, ok := s.DeviceConfigs(name); ok {
+		if fn, ok := dev.Operations()[op]; ok {
+			if pars, ok := cfg.Operations[op]; ok {
+				return fn, pars, true
+			}
+		}
+	}
+	return nil, nil, false
+}
+
+// ParseSystemConfigFile parses the supplied configuration file as per ParseSystemConfig.
 func ParseSystemConfigFile(ctx context.Context, place string, cfgFile string, opts ...Option) (System, error) {
 	var cfg SystemConfig
 	if err := cmdyaml.ParseConfigFile(ctx, cfgFile, &cfg); err != nil {
@@ -102,6 +168,8 @@ func ParseSystemConfigFile(ctx context.Context, place string, cfgFile string, op
 	return cfg.CreateSystem(place, opts...)
 }
 
+// ParseSystemConfig parses the supplied configuration data and returns
+// a System using CreateSystem.
 func ParseSystemConfig(ctx context.Context, place string, cfgData []byte, opts ...Option) (System, error) {
 	var cfg SystemConfig
 	if err := yaml.Unmarshal(cfgData, &cfg); err != nil {
@@ -128,6 +196,7 @@ func (cfg SystemConfig) CreateSystem(place string, opts ...Option) (System, erro
 		return System{}, err
 	}
 	return System{
+		Config:      cfg,
 		Location:    cfg.Location.Location,
 		Controllers: ctrl,
 		Devices:     dev,

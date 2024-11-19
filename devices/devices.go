@@ -28,10 +28,11 @@ type Controller interface {
 	CustomConfig() any
 	UnmarshalYAML(*yaml.Node) error
 	Operations() map[string]Operation
+	OperationsHelp() map[string]string
 	Implementation() any
 }
 
-type Operation func(ctx context.Context, args ...string) error
+type Operation func(ctx context.Context, writer io.Writer, args ...string) error
 
 type Device interface {
 	SetConfig(DeviceConfigCommon)
@@ -42,16 +43,17 @@ type Device interface {
 	ControlledByName() string
 	ControlledBy() Controller
 	Operations() map[string]Operation
+	OperationsHelp() map[string]string
 	Timeout() time.Duration
 }
 
 type Option func(*Options)
 
 type Options struct {
-	Logger             *slog.Logger
-	Interactive        io.Writer
-	ProtocolConnection protocol.Conn
-	Custom             any
+	Logger          *slog.Logger
+	Interactive     io.Writer
+	ProtocolSession protocol.Session
+	Custom          any
 }
 
 func WithLogger(l *slog.Logger) Option {
@@ -60,9 +62,9 @@ func WithLogger(l *slog.Logger) Option {
 	}
 }
 
-func WithConnection(c protocol.Conn) Option {
+func WithSession(c protocol.Session) Option {
 	return func(o *Options) {
-		o.ProtocolConnection = c
+		o.ProtocolSession = c
 	}
 }
 

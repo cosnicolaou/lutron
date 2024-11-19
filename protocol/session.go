@@ -5,41 +5,33 @@
 package protocol
 
 import (
+	"context"
 	"sync"
 )
 
+type Transport interface {
+	Send(ctx context.Context, buf []byte) (int, error)
+	ReadUntil(ctx context.Context, expected []string) ([]byte, error)
+	Close(ctx context.Context) error
+}
+
+type Session interface {
+	Send(ctx context.Context, buf []byte)
+	ReadUntil(ctx context.Context, expected ...string) []byte
+	Close(ctx context.Context) error
+	Err() error
+}
+
 type session struct {
-	mu  sync.Mutex
-	err error
-	//	entries []string
+	mu   sync.Mutex
+	err  error
 	conn Transport
-	busy bool
+	idle *IdleTimer
 }
 
-func NewSession(t Transport) Session {
-	return &session{conn: t}
+func NewSession(t Transport, idle *IdleTimer) Session {
+	return &session{conn: t, idle: idle}
 }
-
-/*
-func (s *session) SetTransport(c Transport) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.conn = c
-}
-
-
-func (s *session) Entries() iter.Seq[string] {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return func(yield func(s string) bool) {
-		for _, e := range s.entries {
-			if !yield(e) {
-				break
-			}
-		}
-	}
-}
-*/
 
 func (s *session) Err() error {
 	s.mu.Lock()
@@ -47,48 +39,60 @@ func (s *session) Err() error {
 	return s.err
 }
 
-func (s *session) Send(text string) {
+func (s *session) Send(ctx context.Context, buf []byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.err != nil {
 		return
 	}
-	s.err = s.conn.Send(text)
+	s.idle.Reset()
+	_, s.err = s.conn.Send(ctx, buf)
 }
 
-func (s *session) ReadUntil(text ...string) string {
+func (s *session) ReadUntil(ctx context.Context, expected ...string) []byte {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.err != nil {
-		return ""
+		return nil
 	}
-	out, err := s.conn.ReadUntil(text...)
+	s.idle.Reset()
+	out, err := s.conn.ReadUntil(ctx, expected)
 	if err != nil {
 		s.err = err
-		return ""
+		return nil
 	}
 	return out
 }
 
-func (s *session) Expect(text ...string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.err != nil {
-		return
-	}
-	_, err := s.conn.ReadUntil(text...)
-	if err != nil {
-		s.err = err
-		return
-	}
-	return
-}
-
-func (s *session) Close() error {
+func (s *session) Close(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.err != nil {
 		return s.err
 	}
-	return s.conn.Close()
+	return s.conn.Close(ctx)
+}
+
+type errorSession struct {
+	err error
+}
+
+// NewErrorSession returns a session that always returns the given error.
+func NewErrorSession(err error) Session {
+	return &errorSession{err: err}
+}
+
+func (s *errorSession) Err() error {
+	return s.err
+}
+
+func (s *errorSession) Send(ctx context.Context, buf []byte) {
+}
+
+func (s *errorSession) ReadUntil(ctx context.Context, expected ...string) []byte {
+	return nil
+}
+
+func (s *errorSession) Close(ctx context.Context) error {
+	return s.err
 }

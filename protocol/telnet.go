@@ -5,8 +5,8 @@
 package protocol
 
 import (
+	"context"
 	"log/slog"
-	"slices"
 	"time"
 
 	"github.com/ziutek/telnet"
@@ -18,44 +18,45 @@ type telnetConn struct {
 	logger  *slog.Logger
 }
 
-func DialTelnet(addr string, timeout time.Duration, logger *slog.Logger) (Transport, error) {
+func DialTelnet(ctx context.Context, addr string, timeout time.Duration, logger *slog.Logger) (Transport, error) {
+	logger.Log(ctx, slog.LevelInfo, "dialing", "addr", addr)
 	conn, err := telnet.Dial("tcp", addr)
 	if err != nil {
+		logger.Log(ctx, slog.LevelWarn, "dial failed", "addr", addr, "err", err)
 		return nil, err
 	}
 	logger = logger.With("addr", conn.RemoteAddr().String())
 	return &telnetConn{conn: conn, timeout: timeout, logger: logger}, nil
 }
 
-func (tc *telnetConn) Send(text string) error {
+func (tc *telnetConn) Send(ctx context.Context, buf []byte) (int, error) {
 	if err := tc.conn.SetWriteDeadline(time.Now().Add(tc.timeout)); err != nil {
-		return err
+		tc.logger.Log(ctx, slog.LevelWarn, "send failed to set read deadline", "err", err)
+		return -1, err
 	}
-	buf := slices.Clone([]byte(text))
-	_, err := tc.conn.Write(buf)
-	tc.logger.Info("sent", "text", text, "err", err)
-	return err
+	n, err := tc.conn.Write(buf)
+	tc.logger.Log(ctx, slog.LevelInfo, "sent", "text", string(buf), "err", err)
+	return n, err
 }
 
-func (tc *telnetConn) ReadUntil(text ...string) (string, error) {
+func (tc *telnetConn) ReadUntil(ctx context.Context, expected []string) ([]byte, error) {
 	if err := tc.conn.SetReadDeadline(time.Now().Add(tc.timeout)); err != nil {
-		return "", err
+		tc.logger.Log(ctx, slog.LevelWarn, "readUntil failed to set read deadline", "err", err)
+		return nil, err
 	}
-	buf, err := tc.conn.ReadUntil(text...)
-	out := string(buf)
-	tc.logger.Info("readUntil", "text", text, "err", err)
-	return out, err
+	buf, err := tc.conn.ReadUntil(expected...)
+	if err != nil {
+		tc.logger.Log(ctx, slog.LevelWarn, "readUntil failed", "text", expected, "err", err)
+		return nil, err
+	}
+	tc.logger.Log(ctx, slog.LevelInfo, "readUntil", "text", expected)
+	return buf, err
 }
 
-func (tc *telnetConn) Expect(text ...string) error {
-	if err := tc.conn.SetReadDeadline(time.Now().Add(tc.timeout)); err != nil {
-		return err
+func (tc *telnetConn) Close(ctx context.Context) error {
+	if err := tc.conn.Close(); err != nil {
+		tc.logger.Log(ctx, slog.LevelWarn, "close failed", "err", err)
 	}
-	err := tc.conn.SkipUntil(text...)
-	tc.logger.Info("expect", "text", text, "err", err)
-	return err
-}
-
-func (tc *telnetConn) Close() error {
-	return tc.conn.Close()
+	tc.logger.Log(ctx, slog.LevelInfo, "close")
+	return nil
 }
