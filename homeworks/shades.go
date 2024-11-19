@@ -10,7 +10,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/cosnicolaou/lutron/devices"
+	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/lutron/protocol"
 	"gopkg.in/yaml.v3"
 )

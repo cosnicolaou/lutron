@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cosnicolaou/lutron/devices"
+	"github.com/cosnicolaou/automation/devices"
 )
 
 func NewController(typ string, opts devices.Options) (devices.Controller, error) {

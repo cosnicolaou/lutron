@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosnicolaou/lutron/devices"
+	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/lutron/homeworks"
 	"gopkg.in/yaml.v3"
 )
@@ -84,10 +84,8 @@ func TestHWParsing(t *testing.T) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 
-	dSpec := devs["living room"].CustomConfig().(homeworks.HWShadeGroupConfig)
-	if got, want := dSpec, (homeworks.HWShadeGroupConfig{
-		ID:    1,
-		Level: 50}); !reflect.DeepEqual(got, want) {
+	dSpec := devs["living room"].CustomConfig().(homeworks.HWShadeConfig)
+	if got, want := dSpec, (homeworks.HWShadeConfig{ID: 1}); !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 

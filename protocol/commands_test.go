@@ -10,7 +10,7 @@ import (
 )
 
 func TestCommand(t *testing.T) {
-	c := newCommand(systemCommands, false, []byte("1,23"))
+	c := NewCommand(SystemCommands, false, []byte("1,23"))
 	if got, want := c.request(), []byte("?SYSTEM,1,23\r\n"); !bytes.Equal(got, want) {
 		t.Errorf("got %s, want %s", got, want)
 	}
