@@ -7,7 +7,6 @@ package homeworks
 import (
 	"context"
 	"fmt"
-	"io"
 	"strconv"
 
 	"github.com/cosnicolaou/automation/devices"
@@ -98,19 +97,19 @@ func (sg *HWShadeGroup) Operations() map[string]devices.Operation {
 	return sg.operations(sg.raise, sg.lower, sg.set)
 }
 
-func (sg *HWShadeGroup) raise(ctx context.Context, out io.Writer, _ ...string) error {
+func (sg *HWShadeGroup) raise(ctx context.Context, _ devices.OperationArgs) error {
 	sess := sg.processor.Session(ctx)
 	return sg.raiseShade(ctx, sess, protocol.ShadeGroupCommands)
 }
 
-func (sg *HWShadeGroup) lower(ctx context.Context, out io.Writer, _ ...string) error {
+func (sg *HWShadeGroup) lower(ctx context.Context, _ devices.OperationArgs) error {
 	sess := sg.processor.Session(ctx)
 	return sg.lowerShade(ctx, sess, protocol.ShadeGroupCommands)
 }
 
-func (sg *HWShadeGroup) set(ctx context.Context, out io.Writer, pars ...string) error {
+func (sg *HWShadeGroup) set(ctx context.Context, args devices.OperationArgs) error {
 	sess := sg.processor.Session(ctx)
-	return sg.setShadeLevel(ctx, sess, protocol.ShadeGroupCommands, pars)
+	return sg.setShadeLevel(ctx, sess, protocol.ShadeGroupCommands, args.Args)
 }
 
 func (s *HWShade) CustomConfig() any {
@@ -125,17 +124,17 @@ func (s *HWShade) Operations() map[string]devices.Operation {
 	return s.operations(s.raise, s.lower, s.set)
 }
 
-func (sg *HWShade) raise(ctx context.Context, out io.Writer, _ ...string) error {
+func (sg *HWShade) raise(ctx context.Context, _ devices.OperationArgs) error {
 	sess := sg.processor.Session(ctx)
 	return sg.raiseShade(ctx, sess, protocol.OutputCommands)
 }
 
-func (sg *HWShade) lower(ctx context.Context, out io.Writer, _ ...string) error {
+func (sg *HWShade) lower(ctx context.Context, _ devices.OperationArgs) error {
 	sess := sg.processor.Session(ctx)
 	return sg.lowerShade(ctx, sess, protocol.OutputCommands)
 }
 
-func (sg *HWShade) set(ctx context.Context, out io.Writer, pars ...string) error {
+func (sg *HWShade) set(ctx context.Context, args devices.OperationArgs) error {
 	sess := sg.processor.Session(ctx)
-	return sg.setShadeLevel(ctx, sess, protocol.OutputCommands, pars)
+	return sg.setShadeLevel(ctx, sess, protocol.OutputCommands, args.Args)
 }

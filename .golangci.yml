@@ -6,15 +6,12 @@ run:
 linters-settings:
   gocyclo:
     min-complexity: 15
-  revive:
-    rules:
-      - name: unused-parameter
-        disabled: true
+  gosec:
+    excludes:
+      - G115 # this is just too poorly implemented to be useful.
 
 linters:
   enable:
-    - bodyclose
-    - gosec
     - gocritic
     - gocyclo
     - gofmt
@@ -29,4 +26,4 @@ linters:
     - typecheck
     - unconvert
     - unused
-  disable-all: true
+    - gosec

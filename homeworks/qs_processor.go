@@ -7,7 +7,6 @@ package homeworks
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -74,32 +73,32 @@ func (p *QSProcessor) Implementation() any {
 
 func (p *QSProcessor) Operations() map[string]devices.Operation {
 	return map[string]devices.Operation{
-		"gettime": func(ctx context.Context, out io.Writer, args ...string) error {
+		"gettime": func(ctx context.Context, args devices.OperationArgs) error {
 			t, err := p.GetTime(ctx)
-			if out != nil && err == nil {
-				fmt.Fprintf(out, "gettime: %v\n", t)
+			if err == nil {
+				fmt.Fprintf(args.Writer, "gettime: %v\n", t)
 			}
 			return err
 		},
-		"getlocation": func(ctx context.Context, out io.Writer, args ...string) error {
+		"getlocation": func(ctx context.Context, args devices.OperationArgs) error {
 			lat, long, err := p.GetLatLong(ctx)
-			if out != nil && err == nil {
-				fmt.Fprintf(out, "latlong: %vN %vW\n", lat, long)
+			if err == nil {
+				fmt.Fprintf(args.Writer, "latlong: %vN %vW\n", lat, long)
 			}
 			return err
 		},
-		"getsuntimes": func(ctx context.Context, out io.Writer, args ...string) error {
+		"getsuntimes": func(ctx context.Context, args devices.OperationArgs) error {
 			rise, set, err := p.GetSunriseSunset(ctx)
-			if out != nil && err == nil {
-				fmt.Fprintf(out, "sunrise: %v, sunset: %v\n",
+			if err == nil {
+				fmt.Fprintf(args.Writer, "sunrise: %v, sunset: %v\n",
 					rise.Format("15:04:05"), set.Format("15:04:05"))
 			}
 			return err
 		},
-		"os_version": func(ctx context.Context, out io.Writer, args ...string) error {
+		"os_version": func(ctx context.Context, args devices.OperationArgs) error {
 			osv, err := p.Version(ctx)
-			if out != nil && err == nil {
-				fmt.Fprintf(out, "%v\n", osv)
+			if err == nil {
+				fmt.Fprintf(args.Writer, "%v\n", osv)
 			}
 			return err
 		},
