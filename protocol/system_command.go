@@ -7,6 +7,8 @@ package protocol
 import (
 	"context"
 	"strconv"
+
+	"github.com/cosnicolaou/automation/net/streamconn"
 )
 
 type SystemActions int
@@ -39,7 +41,7 @@ func NormalizeTimeZone(tz string) string {
 }
 
 // System sends a '[#?]System' command to the Lutron system.
-func System(ctx context.Context, s Session, set bool, action SystemActions, parameters ...string) (string, error) {
+func System(ctx context.Context, s streamconn.Session, set bool, action SystemActions, parameters ...string) (string, error) {
 	cmd := NewCommand(SystemCommands, set, []byte(strconv.Itoa(int(action))))
 	r, err := cmd.Call(ctx, s)
 	if err != nil {

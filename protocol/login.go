@@ -8,6 +8,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+
+	"github.com/cosnicolaou/automation/net/streamconn"
 )
 
 var (
@@ -18,7 +20,7 @@ var (
 	qsPromptStr = string(qsPrompt)
 )
 
-func QSLogin(ctx context.Context, s Session, user, pass string) error {
+func QSLogin(ctx context.Context, s streamconn.Session, user, pass string) error {
 	s.ReadUntil(ctx, "login: ")
 	s.Send(ctx, []byte(user+"\r\n"))
 	s.ReadUntil(ctx, "password: ")
