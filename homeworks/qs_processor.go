@@ -16,6 +16,7 @@ import (
 
 	"cloudeng.io/cmdutil/keystore"
 	"github.com/cosnicolaou/automation/devices"
+	"github.com/cosnicolaou/automation/net/streamconn"
 	"github.com/cosnicolaou/lutron/protocol"
 
 	"gopkg.in/yaml.v3"
@@ -35,8 +36,8 @@ type QSProcessor struct {
 	logger            *slog.Logger
 
 	mu           sync.Mutex
-	idle         *protocol.IdleTimer
-	session      protocol.Session
+	idle         *streamconn.IdleTimer
+	session      streamconn.Session
 	closeContext context.Context
 	closeCancel  context.CancelFunc
 	closeCh      chan struct{}
@@ -195,18 +196,18 @@ func (p *QSProcessor) Version(ctx context.Context) (string, error) {
 
 // Session returns an authenticated session to the QS processor. If
 // an error is encountered then an error session is returned.
-func (p *QSProcessor) Session(ctx context.Context) protocol.Session {
+func (p *QSProcessor) Session(ctx context.Context) streamconn.Session {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.session != nil {
 		return p.session
 	}
-	transport, err := protocol.DialTelnet(ctx, p.IPAddress, p.Timeout, p.logger)
+	transport, err := streamconn.DialTelnet(ctx, p.IPAddress, p.Timeout, p.logger)
 	if err != nil {
-		return protocol.NewErrorSession(err)
+		return streamconn.NewErrorSession(err)
 	}
-	p.idle = protocol.NewIdleTimer(p.KeepAlive)
-	p.session = protocol.NewSession(transport, p.idle)
+	p.idle = streamconn.NewIdleTimer(p.KeepAlive)
+	p.session = streamconn.NewSession(transport, p.idle)
 
 	// Authenticate
 	keys := keystore.AuthFromContextForID(ctx, p.KeyID)
@@ -215,7 +216,7 @@ func (p *QSProcessor) Session(ctx context.Context) protocol.Session {
 		p.session.Close(ctx)
 		p.session = nil
 		p.idle = nil
-		return protocol.NewErrorSession(err)
+		return streamconn.NewErrorSession(err)
 	}
 	p.closeContext, p.closeCancel = context.WithCancel(ctx)
 	p.closeCh = make(chan struct{})
@@ -244,7 +245,7 @@ func (p *QSProcessor) CloseSession(ctx context.Context) error {
 	return err
 }
 
-func (p *QSProcessor) idleClose(ctx context.Context, idle *protocol.IdleTimer) {
+func (p *QSProcessor) idleClose(ctx context.Context, idle *streamconn.IdleTimer) {
 	for {
 		select {
 		case <-time.After(idle.Remaining()):

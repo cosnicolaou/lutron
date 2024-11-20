@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/cosnicolaou/automation/devices"
+	"github.com/cosnicolaou/automation/net/streamconn"
 	"github.com/cosnicolaou/lutron/protocol"
 	"gopkg.in/yaml.v3"
 )
@@ -47,22 +48,22 @@ func (sb HWShadeConfig) operations(raise, lower, set devices.Operation) map[stri
 	}
 }
 
-func (sb HWShadeConfig) shadeCommand(ctx context.Context, s protocol.Session, cg protocol.CommandGroup, pars []byte) error {
+func (sb HWShadeConfig) shadeCommand(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup, pars []byte) error {
 	_, err := protocol.NewCommand(cg, true, pars).Call(ctx, s)
 	return err
 }
 
-func (sb HWShadeConfig) raiseShade(ctx context.Context, s protocol.Session, cg protocol.CommandGroup) error {
+func (sb HWShadeConfig) raiseShade(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup) error {
 	pars := append([]byte(strconv.Itoa(int(sb.ID))), ',', '2')
 	return sb.shadeCommand(ctx, s, cg, pars)
 }
 
-func (sb HWShadeConfig) lowerShade(ctx context.Context, s protocol.Session, cg protocol.CommandGroup) error {
+func (sb HWShadeConfig) lowerShade(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup) error {
 	pars := append([]byte(strconv.Itoa(int(sb.ID))), ',', '3')
 	return sb.shadeCommand(ctx, s, cg, pars)
 }
 
-func (sb HWShadeConfig) setShadeLevel(ctx context.Context, s protocol.Session, cg protocol.CommandGroup, args []string) error {
+func (sb HWShadeConfig) setShadeLevel(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup, args []string) error {
 	level, err := parseShadeLevel(args)
 	if err != nil {
 		return err
