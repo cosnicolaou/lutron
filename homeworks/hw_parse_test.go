@@ -48,13 +48,13 @@ func TestHWParsing(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(logRecorder, nil))
 	opts := []devices.Option{
 		devices.WithLogger(logger),
+		devices.WithDevices(homeworks.SupportedDevices()),
+		devices.WithControllers(homeworks.SupportedControllers()),
 	}
 
 	ctrls, devs, err := devices.BuildDevices(
 		cfg.Controllers,
 		cfg.Devices,
-		homeworks.SupportedControllers(),
-		homeworks.SupportedDevices(),
 		opts...)
 	if err != nil {
 		t.Fatalf("failed to build devices: %v", err)
