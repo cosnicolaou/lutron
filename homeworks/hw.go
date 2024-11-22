@@ -2,6 +2,7 @@ package homeworks
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/cosnicolaou/automation/devices"
@@ -17,18 +18,25 @@ func NewController(typ string, opts devices.Options) (devices.Controller, error)
 
 func NewDevice(typ string, opts devices.Options) (devices.Device, error) {
 	switch typ {
-	case "shades":
-		return &HWShadeGroup{}, nil
+	case "shadegrp":
+		return &HWShadeGroup{
+			hwDeviceBase: hwDeviceBase{
+				logger: opts.Logger.With(
+					"protocol", "homeworks-qs",
+					"device", "shadegrp")}}, nil
 	case "shade":
-		return &HWShade{}, nil
+		return &HWShade{hwDeviceBase: hwDeviceBase{
+			logger: opts.Logger.With(
+				"protocol", "homeworks-qs",
+				"device", "shade")}}, nil
 	}
 	return nil, fmt.Errorf("unsupported lutron device type %s", typ)
 }
 
 func SupportedDevices() devices.SupportedDevices {
 	return devices.SupportedDevices{
-		"shades": NewDevice,
-		"shade":  NewDevice,
+		"shadegrp": NewDevice,
+		"shade":    NewDevice,
 	}
 }
 
@@ -41,6 +49,7 @@ func SupportedControllers() devices.SupportedControllers {
 type hwDeviceBase struct {
 	devices.DeviceConfigCommon
 	processor *QSProcessor
+	logger    *slog.Logger
 }
 
 func (d *hwDeviceBase) SetConfig(c devices.DeviceConfigCommon) {

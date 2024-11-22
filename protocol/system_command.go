@@ -6,7 +6,10 @@ package protocol
 
 import (
 	"context"
+	"fmt"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/cosnicolaou/automation/net/streamconn"
 )
@@ -51,4 +54,82 @@ func System(ctx context.Context, s streamconn.Session, set bool, action SystemAc
 		return "", ErrorNullParsedResponse
 	}
 	return r[0], nil
+}
+
+func SystemQuery(ctx context.Context, s streamconn.Session, action SystemActions) (string, error) {
+	response, err := System(ctx, s, false, action)
+	if err != nil {
+		return "", fmt.Errorf("%v: %w", action, err)
+	}
+	return response, nil
+}
+
+func GetTime(ctx context.Context, s streamconn.Session) (time.Time, error) {
+	date, err := SystemQuery(ctx, s, SystemDate)
+	if err != nil {
+		return time.Time{}, err
+	}
+	tod, err := SystemQuery(ctx, s, SystemTime)
+	if err != nil {
+		return time.Time{}, err
+	}
+	tz, err := SystemQuery(ctx, s, SystemTimeZone)
+	if err != nil {
+		return time.Time{}, err
+	}
+	tzn := NormalizeTimeZone(tz)
+	sysTime, err := time.Parse("01/02/2006 15:04:05 -07:00", date+" "+tod+" "+tzn)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return sysTime, nil
+}
+
+func GetLatLong(ctx context.Context, s streamconn.Session) (float64, float64, error) {
+	latlong, err := SystemQuery(ctx, s, SystemLatLong)
+	if err != nil {
+		return 0, 0, err
+	}
+	parts := strings.Split(latlong, ",")
+	if len(parts) != 2 {
+		return 0, 0, fmt.Errorf("unexpected response: %v", latlong)
+	}
+	lat, err := strconv.ParseFloat(parts[0], 64)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to parse latitude: %v", err)
+	}
+	long, err := strconv.ParseFloat(parts[1], 64)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to parse longitude: %v", err)
+	}
+	return lat, long, nil
+}
+
+func GetSunriseSunset(ctx context.Context, s streamconn.Session) (time.Time, time.Time, error) {
+	sunrise, err := SystemQuery(ctx, s, SystemSunrise)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	sunset, err := SystemQuery(ctx, s, SystemSunset)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	sunriseT, err := time.Parse("15:04:05", sunrise)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	sunsetT, err := time.Parse("15:04:05", sunset)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	return sunriseT, sunsetT, nil
+}
+
+func GetVersion(ctx context.Context, s streamconn.Session) (string, error) {
+	data, err := SystemQuery(ctx, s, SystemOSRev)
+	if err != nil {
+		return "", err
+	}
+	return data, nil
 }

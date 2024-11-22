@@ -8,14 +8,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"cloudeng.io/cmdutil/keystore"
 	"github.com/cosnicolaou/automation/devices"
+	"github.com/cosnicolaou/automation/net/netutil"
 	"github.com/cosnicolaou/automation/net/streamconn"
+	"github.com/cosnicolaou/automation/net/streamconn/telnet"
 	"github.com/cosnicolaou/lutron/protocol"
 
 	"gopkg.in/yaml.v3"
@@ -34,17 +34,14 @@ type QSProcessor struct {
 	QSProcessorConfig `yaml:",inline"`
 	logger            *slog.Logger
 
-	mu           sync.Mutex
-	idle         *streamconn.IdleTimer
-	session      streamconn.Session
-	closeContext context.Context
-	closeCancel  context.CancelFunc
-	closeCh      chan struct{}
+	mu      sync.Mutex
+	idle    *netutil.IdleTimer
+	session streamconn.Session
 }
 
 func NewQSProcessor(opts devices.Options) *QSProcessor {
 	return &QSProcessor{
-		logger: opts.Logger,
+		logger: opts.Logger.With("protocol", "homeworks-qs"),
 	}
 }
 
@@ -74,21 +71,21 @@ func (p *QSProcessor) Implementation() any {
 func (p *QSProcessor) Operations() map[string]devices.Operation {
 	return map[string]devices.Operation{
 		"gettime": func(ctx context.Context, args devices.OperationArgs) error {
-			t, err := p.GetTime(ctx)
+			t, err := protocol.GetTime(ctx, p.Session(ctx))
 			if err == nil {
 				fmt.Fprintf(args.Writer, "gettime: %v\n", t)
 			}
 			return err
 		},
 		"getlocation": func(ctx context.Context, args devices.OperationArgs) error {
-			lat, long, err := p.GetLatLong(ctx)
+			lat, long, err := protocol.GetLatLong(ctx, p.Session(ctx))
 			if err == nil {
 				fmt.Fprintf(args.Writer, "latlong: %vN %vW\n", lat, long)
 			}
 			return err
 		},
 		"getsuntimes": func(ctx context.Context, args devices.OperationArgs) error {
-			rise, set, err := p.GetSunriseSunset(ctx)
+			rise, set, err := protocol.GetSunriseSunset(ctx, p.Session(ctx))
 			if err == nil {
 				fmt.Fprintf(args.Writer, "sunrise: %v, sunset: %v\n",
 					rise.Format("15:04:05"), set.Format("15:04:05"))
@@ -96,7 +93,7 @@ func (p *QSProcessor) Operations() map[string]devices.Operation {
 			return err
 		},
 		"os_version": func(ctx context.Context, args devices.OperationArgs) error {
-			osv, err := p.Version(ctx)
+			osv, err := protocol.GetVersion(ctx, p.Session(ctx))
 			if err == nil {
 				fmt.Fprintf(args.Writer, "%v\n", osv)
 			}
@@ -114,6 +111,7 @@ func (p *QSProcessor) OperationsHelp() map[string]string {
 	}
 }
 
+/*
 func (p *QSProcessor) SystemQuery(ctx context.Context, action protocol.SystemActions) (string, error) {
 	s := p.Session(ctx)
 	response, err := protocol.System(ctx, s, false, action)
@@ -192,6 +190,7 @@ func (p *QSProcessor) Version(ctx context.Context) (string, error) {
 	}
 	return data, nil
 }
+*/
 
 // Session returns an authenticated session to the QS processor. If
 // an error is encountered then an error session is returned.
@@ -201,63 +200,52 @@ func (p *QSProcessor) Session(ctx context.Context) streamconn.Session {
 	if p.session != nil {
 		return p.session
 	}
-	transport, err := streamconn.DialTelnet(ctx, p.IPAddress, p.Timeout, p.logger)
+	transport, err := telnet.Dial(ctx, p.IPAddress, p.Timeout, p.logger)
 	if err != nil {
 		return streamconn.NewErrorSession(err)
 	}
-	p.idle = streamconn.NewIdleTimer(p.KeepAlive)
+
+	p.idle = netutil.NewIdleTimer(p.KeepAlive)
 	p.session = streamconn.NewSession(transport, p.idle)
 
 	// Authenticate
 	keys := keystore.AuthFromContextForID(ctx, p.KeyID)
-	err = protocol.QSLogin(ctx, p.session, keys.User, keys.Token)
-	if err != nil {
-		p.session.Close(ctx)
-		p.session = nil
-		p.idle = nil
+	if err := protocol.QSLogin(ctx, p.session, keys.User, keys.Token); err != nil {
+		p.closeUnderlyingUnlocked(ctx)
 		return streamconn.NewErrorSession(err)
 	}
-	p.closeContext, p.closeCancel = context.WithCancel(ctx)
-	p.closeCh = make(chan struct{})
-	go p.idleClose(p.closeContext, p.idle)
+	go p.idle.Wait(ctx, p.expireSession)
 	return p.session
 }
 
-func (p *QSProcessor) CloseSession(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (p *QSProcessor) closeUnderlyingUnlocked(ctx context.Context) error {
 	if p.session == nil {
 		return nil
 	}
 	err := p.session.Close(ctx)
 	p.session = nil
 	p.idle = nil
-	p.closeCancel()
-	closeTimeout := time.Minute
-	select {
-	case <-p.closeCh:
-	case <-time.After(closeTimeout):
-		if err == nil {
-			err = fmt.Errorf("failed to close session after %v", closeTimeout)
-		}
-	}
 	return err
 }
 
-func (p *QSProcessor) idleClose(ctx context.Context, idle *streamconn.IdleTimer) {
-	for {
-		select {
-		case <-time.After(idle.Remaining()):
-			if idle.Expired() {
-				p.CloseSession(ctx)
-				return
-			}
-		case <-ctx.Done():
-			return
-		case <-p.closeCh:
-			return
-		}
+// expireSession is called to close the underlying session when the idle
+// timer expires.
+func (p *QSProcessor) expireSession(ctx context.Context) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.closeUnderlyingUnlocked(ctx)
+}
+
+func (p *QSProcessor) CloseSession(ctx context.Context) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	err := p.closeUnderlyingUnlocked(ctx)
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	if err := p.idle.StopWait(ctx); err != nil {
+		p.logger.Log(ctx, slog.LevelWarn, "failed to stop idle watcher", "err", err)
 	}
+	return err
 }
 
 func (p *QSProcessor) Close(ctx context.Context) error {

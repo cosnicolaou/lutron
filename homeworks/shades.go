@@ -35,14 +35,16 @@ func (sb HWShadeConfig) OperationsHelp() map[string]string {
 	return map[string]string{
 		"raise": "raise the shade",
 		"lower": "lower the shade",
+		"stop":  "stop the shade",
 		"set":   "set the shade level",
 	}
 }
 
-func (sb HWShadeConfig) operations(raise, lower, set devices.Operation) map[string]devices.Operation {
+func (sb HWShadeConfig) operations(raise, lower, stop, set devices.Operation) map[string]devices.Operation {
 	return map[string]devices.Operation{
 		"raise": raise,
 		"lower": lower,
+		"stop":  stop,
 		"set":   set,
 	}
 }
@@ -59,6 +61,11 @@ func (sb HWShadeConfig) raiseShade(ctx context.Context, s streamconn.Session, cg
 
 func (sb HWShadeConfig) lowerShade(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup) error {
 	pars := append([]byte(strconv.Itoa(int(sb.ID))), ',', '3')
+	return sb.shadeCommand(ctx, s, cg, pars)
+}
+
+func (sb HWShadeConfig) stopShade(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup) error {
+	pars := append([]byte(strconv.Itoa(int(sb.ID))), ',', '4')
 	return sb.shadeCommand(ctx, s, cg, pars)
 }
 
@@ -94,7 +101,7 @@ func (sg *HWShadeGroup) UnmarshalYAML(node *yaml.Node) error {
 }
 
 func (sg *HWShadeGroup) Operations() map[string]devices.Operation {
-	return sg.operations(sg.raise, sg.lower, sg.set)
+	return sg.operations(sg.raise, sg.lower, sg.stop, sg.set)
 }
 
 func (sg *HWShadeGroup) raise(ctx context.Context, _ devices.OperationArgs) error {
@@ -105,6 +112,11 @@ func (sg *HWShadeGroup) raise(ctx context.Context, _ devices.OperationArgs) erro
 func (sg *HWShadeGroup) lower(ctx context.Context, _ devices.OperationArgs) error {
 	sess := sg.processor.Session(ctx)
 	return sg.lowerShade(ctx, sess, protocol.ShadeGroupCommands)
+}
+
+func (sg *HWShadeGroup) stop(ctx context.Context, _ devices.OperationArgs) error {
+	sess := sg.processor.Session(ctx)
+	return sg.stopShade(ctx, sess, protocol.ShadeGroupCommands)
 }
 
 func (sg *HWShadeGroup) set(ctx context.Context, args devices.OperationArgs) error {
@@ -121,7 +133,7 @@ func (s *HWShade) UnmarshalYAML(node *yaml.Node) error {
 }
 
 func (s *HWShade) Operations() map[string]devices.Operation {
-	return s.operations(s.raise, s.lower, s.set)
+	return s.operations(s.raise, s.lower, s.stop, s.set)
 }
 
 func (sg *HWShade) raise(ctx context.Context, _ devices.OperationArgs) error {
@@ -132,6 +144,11 @@ func (sg *HWShade) raise(ctx context.Context, _ devices.OperationArgs) error {
 func (sg *HWShade) lower(ctx context.Context, _ devices.OperationArgs) error {
 	sess := sg.processor.Session(ctx)
 	return sg.lowerShade(ctx, sess, protocol.OutputCommands)
+}
+
+func (sg *HWShade) stop(ctx context.Context, _ devices.OperationArgs) error {
+	sess := sg.processor.Session(ctx)
+	return sg.stopShade(ctx, sess, protocol.OutputCommands)
 }
 
 func (sg *HWShade) set(ctx context.Context, args devices.OperationArgs) error {
