@@ -27,7 +27,7 @@ controllers:
 
 devices:
   - name: living room
-    type: shades
+    type: shadegrp
     controller: home
     id: 1
     level: 50
@@ -71,7 +71,7 @@ func TestHWParsing(t *testing.T) {
 	if got, want := dCommSpec, (devices.DeviceConfigCommon{
 		Name:       "living room",
 		Controller: "home",
-		Type:       "shades"}); !reflect.DeepEqual(got, want) {
+		Type:       "shadegrp"}); !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 

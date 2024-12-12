@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cosnicolaou/automation/net/netutil"
 	"github.com/cosnicolaou/automation/net/streamconn"
 	"github.com/cosnicolaou/lutron/internal/testutil"
 	"github.com/cosnicolaou/lutron/protocol"
@@ -25,7 +26,7 @@ func TestLogin(t *testing.T) {
 	mock.SetResponse("password\r\n", "\r\nQNET> ")
 	mock.SetResponse("bad-password\r\n", "\r\nbad login\r\nlogin:\r\n")
 
-	idle := streamconn.NewIdleTimer(10)
+	idle := netutil.NewIdleTimer(10)
 	s := streamconn.NewSession(mock, idle)
 
 	mock.Send(ctx, []byte("login: "))
