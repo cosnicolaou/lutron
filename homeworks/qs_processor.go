@@ -34,14 +34,16 @@ type QSProcessor struct {
 	QSProcessorConfig `yaml:",inline"`
 	logger            *slog.Logger
 
-	mu      sync.Mutex
-	manager *netutil.IdleManager[streamconn.Session, *QSProcessor]
+	mu       sync.Mutex
+	ondemand *netutil.OnDemandConnection[streamconn.Session, *QSProcessor]
 }
 
 func NewQSProcessor(opts devices.Options) *QSProcessor {
-	return &QSProcessor{
+	p := &QSProcessor{
 		logger: opts.Logger.With("protocol", "homeworks-qs"),
 	}
+	p.ondemand = netutil.NewOnDemandConnection(p, streamconn.NewErrorSession)
+	return p
 }
 
 func (p *QSProcessor) SetConfig(c devices.ControllerConfigCommon) {
@@ -60,6 +62,13 @@ func (p *QSProcessor) UnmarshalYAML(node *yaml.Node) error {
 	if err := node.Decode(&p.QSProcessorConfig); err != nil {
 		return err
 	}
+	if p.Timeout == 0 {
+		return fmt.Errorf("timeout must be specified")
+	}
+	if p.KeepAlive == 0 {
+		return fmt.Errorf("keep_alive must be specified")
+	}
+	p.ondemand.SetKeepAlive(p.KeepAlive)
 	return nil
 }
 
@@ -101,7 +110,7 @@ func (p *QSProcessor) Operations() map[string]devices.Operation {
 	}
 }
 
-func (p *QSProcessor) OperationsHelp() map[string]string {
+func (*QSProcessor) OperationsHelp() map[string]string {
 	return map[string]string{
 		"gettime":     "get the current time, date and timezone",
 		"getlocation": "get the current location in latitude and longitude",
@@ -130,30 +139,12 @@ func (p *QSProcessor) Disconnect(ctx context.Context, sess streamconn.Session) e
 	return sess.Close(ctx)
 }
 
-func (p *QSProcessor) Nil() streamconn.Session {
-	return nil
-}
-
 // Session returns an authenticated session to the QS processor. If
 // an error is encountered then an error session is returned.
 func (p *QSProcessor) Session(ctx context.Context) streamconn.Session {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.manager == nil {
-		p.manager = netutil.NewIdleManager(ctx, p, netutil.NewIdleTimer(p.KeepAlive))
-	}
-	sess, err := p.manager.Connection(ctx)
-	if err != nil {
-		return streamconn.NewErrorSession(err)
-	}
-	return sess
+	return p.ondemand.Connection(ctx)
 }
 
 func (p *QSProcessor) Close(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.manager == nil {
-		return nil
-	}
-	return p.manager.Stop(ctx, time.Minute)
+	return p.ondemand.Close(ctx)
 }

@@ -52,7 +52,7 @@ func TestHWParsing(t *testing.T) {
 		devices.WithControllers(homeworks.SupportedControllers()),
 	}
 
-	ctrls, devs, err := devices.BuildDevices(
+	ctrls, devs, err := devices.CreateSystem(
 		cfg.Controllers,
 		cfg.Devices,
 		opts...)
@@ -69,9 +69,9 @@ func TestHWParsing(t *testing.T) {
 
 	dCommSpec := devs["living room"].Config()
 	if got, want := dCommSpec, (devices.DeviceConfigCommon{
-		Name:       "living room",
-		Controller: "home",
-		Type:       "shadegrp"}); !reflect.DeepEqual(got, want) {
+		Name:           "living room",
+		ControllerName: "home",
+		Type:           "shadegrp"}); !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 

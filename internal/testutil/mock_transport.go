@@ -44,6 +44,15 @@ func (m *MockTransport) Send(_ context.Context, buf []byte) (int, error) {
 	return len(response), nil
 }
 
+func (m *MockTransport) SendSensitive(_ context.Context, buf []byte) (int, error) {
+	response := m.lookup[string(buf)]
+	m.log("sending: %q in response to %q\n", response, buf)
+	for _, r := range []byte(response) {
+		m.connCh <- r
+	}
+	return len(response), nil
+}
+
 func (m *MockTransport) ReadUntil(ctx context.Context, expected []string) ([]byte, error) {
 	seen := []byte{}
 	m.log("reading until %v\n", expected)

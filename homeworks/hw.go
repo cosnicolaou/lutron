@@ -75,3 +75,11 @@ func (d *hwDeviceBase) ControlledBy() devices.Controller {
 func (d *hwDeviceBase) Timeout() time.Duration {
 	return time.Minute
 }
+
+func (d *hwDeviceBase) Conditions() map[string]devices.Condition {
+	return map[string]devices.Condition{}
+}
+
+func (d *hwDeviceBase) ConditionsHelp() map[string]string {
+	return map[string]string{}
+}
