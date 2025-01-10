@@ -23,16 +23,14 @@ import (
 
 type QSProcessorConfig struct {
 	IPAddress string        `yaml:"ip_address"`
-	Timeout   time.Duration `yaml:"timeout"`
 	KeepAlive time.Duration `yaml:"keep_alive"`
 	KeyID     string        `yaml:"key_id"`
 	Verbose   bool          `yaml:"verbose"`
 }
 
 type QSProcessor struct {
-	devices.ControllerConfigCommon
-	QSProcessorConfig `yaml:",inline"`
-	logger            *slog.Logger
+	devices.ControllerBase[QSProcessorConfig]
+	logger *slog.Logger
 
 	mu       sync.Mutex
 	ondemand *netutil.OnDemandConnection[streamconn.Session, *QSProcessor]
@@ -46,29 +44,14 @@ func NewQSProcessor(opts devices.Options) *QSProcessor {
 	return p
 }
 
-func (p *QSProcessor) SetConfig(c devices.ControllerConfigCommon) {
-	p.ControllerConfigCommon = c
-}
-
-func (p *QSProcessor) Config() devices.ControllerConfigCommon {
-	return p.ControllerConfigCommon
-}
-
-func (p *QSProcessor) CustomConfig() any {
-	return p.QSProcessorConfig
-}
-
 func (p *QSProcessor) UnmarshalYAML(node *yaml.Node) error {
-	if err := node.Decode(&p.QSProcessorConfig); err != nil {
+	if err := node.Decode(&p.ControllerConfigCustom); err != nil {
 		return err
 	}
-	if p.Timeout == 0 {
-		return fmt.Errorf("timeout must be specified")
-	}
-	if p.KeepAlive == 0 {
+	if p.ControllerConfigCustom.KeepAlive == 0 {
 		return fmt.Errorf("keep_alive must be specified")
 	}
-	p.ondemand.SetKeepAlive(p.KeepAlive)
+	p.ondemand.SetKeepAlive(p.ControllerConfigCustom.KeepAlive)
 	return nil
 }
 
@@ -120,14 +103,14 @@ func (*QSProcessor) OperationsHelp() map[string]string {
 }
 
 func (p *QSProcessor) Connect(ctx context.Context, idle netutil.IdleReset) (streamconn.Session, error) {
-	transport, err := telnet.Dial(ctx, p.IPAddress, p.Timeout, p.logger)
+	transport, err := telnet.Dial(ctx, p.ControllerConfigCustom.IPAddress, p.Timeout, p.logger)
 	if err != nil {
 		return nil, err
 	}
 	session := streamconn.NewSession(transport, idle)
 
 	// Authenticate
-	keys := keystore.AuthFromContextForID(ctx, p.KeyID)
+	keys := keystore.AuthFromContextForID(ctx, p.ControllerConfigCustom.KeyID)
 	if err := protocol.QSLogin(ctx, session, keys.User, keys.Token); err != nil {
 		session.Close(ctx)
 		return nil, err

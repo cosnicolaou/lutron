@@ -3,7 +3,6 @@ package homeworks
 import (
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/cosnicolaou/automation/devices"
 )
@@ -47,17 +46,9 @@ func SupportedControllers() devices.SupportedControllers {
 }
 
 type hwDeviceBase struct {
-	devices.DeviceConfigCommon
+	devices.DeviceBase[struct{}]
 	processor *QSProcessor
 	logger    *slog.Logger
-}
-
-func (d *hwDeviceBase) SetConfig(c devices.DeviceConfigCommon) {
-	d.DeviceConfigCommon = c
-}
-
-func (d *hwDeviceBase) Config() devices.DeviceConfigCommon {
-	return d.DeviceConfigCommon
 }
 
 func (d *hwDeviceBase) SetController(c devices.Controller) {
@@ -65,21 +56,9 @@ func (d *hwDeviceBase) SetController(c devices.Controller) {
 }
 
 func (d *hwDeviceBase) ControlledByName() string {
-	return d.Controller
+	return d.ControllerName
 }
 
 func (d *hwDeviceBase) ControlledBy() devices.Controller {
 	return d.processor
-}
-
-func (d *hwDeviceBase) Timeout() time.Duration {
-	return time.Minute
-}
-
-func (d *hwDeviceBase) Conditions() map[string]devices.Condition {
-	return map[string]devices.Condition{}
-}
-
-func (d *hwDeviceBase) ConditionsHelp() map[string]string {
-	return map[string]string{}
 }

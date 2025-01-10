@@ -12,7 +12,6 @@ import (
 	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/automation/net/streamconn"
 	"github.com/cosnicolaou/lutron/protocol"
-	"gopkg.in/yaml.v3"
 )
 
 func parseShadeLevel(pars []string) (int, error) {
@@ -92,14 +91,6 @@ type HWShade struct {
 	HWShadeConfig
 }
 
-func (sg *HWShadeGroup) CustomConfig() any {
-	return sg.HWShadeConfig
-}
-
-func (sg *HWShadeGroup) UnmarshalYAML(node *yaml.Node) error {
-	return node.Decode(&sg.HWShadeConfig)
-}
-
 func (sg *HWShadeGroup) Operations() map[string]devices.Operation {
 	return sg.operations(sg.raise, sg.lower, sg.stop, sg.set)
 }
@@ -122,14 +113,6 @@ func (sg *HWShadeGroup) stop(ctx context.Context, _ devices.OperationArgs) error
 func (sg *HWShadeGroup) set(ctx context.Context, args devices.OperationArgs) error {
 	sess := sg.processor.Session(ctx)
 	return sg.setShadeLevel(ctx, sess, protocol.ShadeGroupCommands, args.Args)
-}
-
-func (s *HWShade) CustomConfig() any {
-	return s.HWShadeConfig
-}
-
-func (s *HWShade) UnmarshalYAML(node *yaml.Node) error {
-	return node.Decode(&s.HWShadeConfig)
 }
 
 func (s *HWShade) Operations() map[string]devices.Operation {
