@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync"
 	"time"
 
 	"cloudeng.io/cmdutil/keystore"
@@ -32,7 +31,6 @@ type QSProcessor struct {
 	devices.ControllerBase[QSProcessorConfig]
 	logger *slog.Logger
 
-	mu       sync.Mutex
 	ondemand *netutil.OnDemandConnection[streamconn.Session, *QSProcessor]
 }
 

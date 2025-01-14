@@ -53,7 +53,7 @@ func (m *MockTransport) SendSensitive(_ context.Context, buf []byte) (int, error
 	return len(response), nil
 }
 
-func (m *MockTransport) ReadUntil(ctx context.Context, expected []string) ([]byte, error) {
+func (m *MockTransport) ReadUntil(_ context.Context, expected []string) ([]byte, error) {
 	seen := []byte{}
 	m.log("reading until %v\n", expected)
 	for r := range m.connCh {

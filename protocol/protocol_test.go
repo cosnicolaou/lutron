@@ -29,7 +29,9 @@ func TestLogin(t *testing.T) {
 	idle := netutil.NewIdleTimer(10)
 	s := streamconn.NewSession(mock, idle)
 
-	mock.Send(ctx, []byte("login: "))
+	if _, err := mock.Send(ctx, []byte("login: ")); err != nil {
+		t.Fatal(err)
+	}
 
 	err := protocol.QSLogin(ctx, s, "admin", "password")
 	if err != nil {
@@ -38,7 +40,9 @@ func TestLogin(t *testing.T) {
 
 	s = streamconn.NewSession(mock, idle)
 
-	mock.Send(ctx, []byte("login: "))
+	if _, err := mock.Send(ctx, []byte("login: ")); err != nil {
+		t.Fatal(err)
+	}
 
 	err = protocol.QSLogin(ctx, s, "admin", "bad-password")
 

@@ -6,6 +6,7 @@ package homeworks_test
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"reflect"
 	"testing"
@@ -39,6 +40,7 @@ type config struct {
 }
 
 func TestHWParsing(t *testing.T) {
+	ctx := context.Background()
 	var cfg config
 	if err := yaml.Unmarshal([]byte(spec), &cfg); err != nil {
 		t.Fatalf("failed to unmarshal: %v", err)
@@ -52,7 +54,7 @@ func TestHWParsing(t *testing.T) {
 		devices.WithControllers(homeworks.SupportedControllers()),
 	}
 
-	ctrls, devs, err := devices.CreateSystem(
+	ctrls, devs, err := devices.CreateSystem(ctx,
 		cfg.Controllers,
 		cfg.Devices,
 		opts...)
@@ -62,8 +64,10 @@ func TestHWParsing(t *testing.T) {
 
 	cCommSpec := ctrls["home"].Config()
 	if got, want := cCommSpec, (devices.ControllerConfigCommon{
-		Name: "home",
-		Type: "homeworks-qs"}); !reflect.DeepEqual(got, want) {
+		Name:        "home",
+		Type:        "homeworks-qs",
+		RetryConfig: devices.RetryConfig{Timeout: time.Minute},
+	}); !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 
@@ -71,6 +75,7 @@ func TestHWParsing(t *testing.T) {
 	if got, want := dCommSpec, (devices.DeviceConfigCommon{
 		Name:           "living room",
 		ControllerName: "home",
+		RetryConfig:    devices.RetryConfig{Timeout: time.Minute},
 		Type:           "shadegrp"}); !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
@@ -78,7 +83,6 @@ func TestHWParsing(t *testing.T) {
 	cSpec := ctrls["home"].CustomConfig().(homeworks.QSProcessorConfig)
 	if got, want := cSpec, (homeworks.QSProcessorConfig{
 		IPAddress: "192.168.1.50",
-		Timeout:   time.Minute,
 		KeepAlive: time.Minute,
 		KeyID:     "home"}); !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
