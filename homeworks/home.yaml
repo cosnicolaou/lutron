@@ -1,0 +1,7 @@
+controllers:
+  - type: homeworks-qs
+    name: magnolia-drive
+    ip: 172.16.1.50
+    key_id:
+
+devices:
