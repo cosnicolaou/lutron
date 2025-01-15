@@ -6,4 +6,4 @@
 
 # lutron
 
-This package provides support for controlling lutron lighting systems.
+This package provides support for controlling lutron lighting systems in conjunction with github.com/cosnicolaou/automation/autobot.
