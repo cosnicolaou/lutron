@@ -33,6 +33,7 @@ type HWShadeConfig struct {
 
 type hwShadeBase struct {
 	devices.DeviceBase[HWShadeConfig]
+
 	processor *QSProcessor
 	logger    *slog.Logger
 }
