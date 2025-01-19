@@ -26,14 +26,21 @@ func NewDevice(typ string, opts devices.Options) (devices.Device, error) {
 			logger: opts.Logger.With(
 				"protocol", "homeworks-qs",
 				"device", "shade")}}, nil
+	case "contact-closure":
+		return &ContactClosure{}, nil
+	case "contact-closure-open-close":
+		return &ContactClosureOpenClose{}, nil
+
 	}
 	return nil, fmt.Errorf("unsupported lutron device type %s", typ)
 }
 
 func SupportedDevices() devices.SupportedDevices {
 	return devices.SupportedDevices{
-		"shadegrp": NewDevice,
-		"shade":    NewDevice,
+		"shadegrp":                   NewDevice,
+		"shade":                      NewDevice,
+		"contact-closure":            NewDevice,
+		"contact-closure-open-close": NewDevice,
 	}
 }
 
