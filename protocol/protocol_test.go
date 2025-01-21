@@ -7,7 +7,7 @@ package protocol_test
 import (
 	"context"
 	"errors"
-	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -53,35 +53,50 @@ func TestLogin(t *testing.T) {
 
 func TestParseResponse(t *testing.T) {
 
-	pr := func(c, p, r string) []string {
-		lines, err := protocol.ParseResponse([]byte(c), []byte(p), []byte(r))
+	pr := func(i int, c, p, r string) string {
+		t.Helper()
+		line, err := protocol.ParseResponse([]byte(c), []byte(p), []byte(r))
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("unexpected error for case %v: %q: %v", i, c, err)
 		}
-		return lines
+		return line
 	}
 
-	sl := func(s ...string) []string {
-		return s
+	prompt := "QNET> "
+	withPrompt := func(s string) string {
+		if strings.HasSuffix(s, "\r\n") {
+			return s + prompt
+		}
+		return s + "\r\n" + prompt
 	}
-
-	for _, tc := range []struct {
+	extraResponses := "~OUTPUT,450,29,6\r\n~OUTPUT,450,30,1,100.00\r\n"
+	for i, tc := range []struct {
 		cmd  string
 		resp string
-		want []string
+		want string
 	}{
-		{"~SYSTEM,5,", "~SYSTEM,5,-8:00\r\nQNET> ", sl("-8:00")},
-		{"~SYSTEM,1,", "~SYSTEM,1,18:33:16\r\nQNET> ", sl("18:33:16")},
-		{"~SYSTEM,2,", "~SYSTEM,2,11/17/2024\r\nQNET> ", sl("11/17/2024")},
-		{"~SYSTEM,5,", "~SYSTEM,5,-8:00", sl("-8:00")},
-		{"~SYSTEM,1,", "~SYSTEM,1,18:33:16", sl("18:33:16")},
-		{"~SYSTEM,2,", "~SYSTEM,2,11/17/2024", sl("11/17/2024")},
-		{"~SYSTEM,5,", "~SYSTEM,5,-8:00\r", sl("-8:00")},
-		{"~SYSTEM,1,", "~SYSTEM,1,18:33:16\r", sl("18:33:16")},
-		{"~SYSTEM,2,", "~SYSTEM,2,11/17/2024\r", sl("11/17/2024")},
+		{"~SYSTEM,5,", "~SYSTEM,5,-8:00\r\n", "-8:00"},
+		{"~SYSTEM,5,", "~SYSTEM,5,-8:00\r\n", "-8:00"},
+		{"~SYSTEM,1,", "~SYSTEM,1,18:33:16\r\n", "18:33:16"},
+		{"~SYSTEM,2,", "~SYSTEM,2,11/17/2024\r\n", "11/17/2024"},
+		{"~SYSTEM,5,", "~SYSTEM,5,-8:00", "-8:00"},
+		{"~SYSTEM,1,", "~SYSTEM,1,18:33:16", "18:33:16"},
+		{"~SYSTEM,2,", "~SYSTEM,2,11/17/2024", "11/17/2024"},
+		{"~SYSTEM,5,", "~SYSTEM,5,-8:00\r", "-8:00"},
+		{"~SYSTEM,1,", "~SYSTEM,1,18:33:16\r", "18:33:16"},
+		{"~SYSTEM,2,", "~SYSTEM,2,11/17/2024\r", "11/17/2024"},
 	} {
-		if got, want := pr(tc.cmd, "QNET> ", tc.resp), tc.want; !slices.Equal(got, want) {
-			t.Errorf("got %v, want %v", got, want)
+		if got, want := pr(i, tc.cmd, "QNET> ", withPrompt(tc.resp)), tc.want; got != want {
+			t.Errorf("%v: %v: got %v, want %v", i, tc.cmd, got, want)
+		}
+		if got, want := pr(i, tc.cmd, "QNET> ", withPrompt(extraResponses+tc.resp)), tc.want; got != want {
+			t.Errorf("%v: %v: got %v, want %v", i, tc.cmd, got, want)
+		}
+		if got, want := pr(i, tc.cmd, "QNET> ", withPrompt(extraResponses+tc.resp+"\r\n"+extraResponses)), tc.want; got != want {
+			t.Errorf("%v: %v: got %v, want %v", i, tc.cmd, got, want)
+		}
+		if got, want := pr(i, tc.cmd, "QNET> ", withPrompt(extraResponses+tc.resp+"\r\n"+extraResponses)), tc.want; got != want {
+			t.Errorf("%v: %v: got %v, want %v", i, tc.cmd, got, want)
 		}
 	}
 }

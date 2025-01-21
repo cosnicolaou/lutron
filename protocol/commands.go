@@ -52,46 +52,43 @@ func ParseError(s string) error {
 	return fmt.Errorf("unknown error: %q: %d", s, n)
 }
 
-func parseResponseLine(cmd, prompt, response []byte, out []string) ([]string, error) {
-	if len(response) == 0 {
-		return out, nil
-	}
+func parseResponseLine(cmd, response []byte) (string, error) {
 	line := bytes.TrimPrefix(response, cmd)
-	line = bytes.TrimSuffix(line, prompt)
 	if bytes.Contains(line, []byte("bad login")) {
-		return out, ErrQSLogin
+		return "", ErrQSLogin
 	}
 	if bytes.Contains(line, []byte("unknown command")) {
-		return out, ErrUnknownCommand
+		return "", ErrUnknownCommand
 	}
 	if bytes.Contains(line, []byte("~ERROR")) {
-		return out, ParseError(string(line))
+		return "", ParseError(string(line))
 	}
-	if len(line) == 0 {
-		return out, nil
-	}
-	return append(out, string(line)), nil
+	return string(line), nil
 }
 
-func ParseResponse(cmd, prompt []byte, response []byte) ([]string, error) {
-	var lines []string
+// ParseResponse parses a possibly multi-line response from the Lutron system
+// looking for a response to the issued command. There may be multiple other
+// responses due to monitoring outpot from the system.
+func ParseResponse(cmd, _, response []byte) (string, error) {
 	var line []byte
-	var err error
 	for _, b := range response {
 		if b == 0x00 { // the QS responses sometimes include leading null byte
 			continue
 		}
 		if b == '\r' || b == '\n' {
-			lines, err = parseResponseLine(cmd, prompt, line, lines)
-			if err != nil {
-				return nil, err
+			if !bytes.HasPrefix(line, cmd) {
+				// Unrelated messages, most likely monitoring notifications.
+				line = line[:0]
+				continue
 			}
-			line = line[:0]
-			continue
+			return parseResponseLine(cmd, line)
 		}
 		line = append(line, b)
 	}
-	return parseResponseLine(cmd, prompt, line, lines)
+	if len(line) > 0 && bytes.HasPrefix(line, cmd) {
+		return parseResponseLine(cmd, line)
+	}
+	return "", ErrorNullParsedResponse
 }
 
 type CommandGroup int
@@ -106,7 +103,7 @@ const (
 
 type Command struct {
 	storage [128]byte
-	buf     []byte
+	req     []byte
 	idx     int
 }
 
@@ -133,35 +130,35 @@ func NewCommand(grp CommandGroup, set bool, parameters []byte) Command {
 	} else {
 		c.storage[0] = '?'
 	}
-	c.buf = c.storage[:1]
-	c.buf = grp.appendTo(c.buf)
-	c.idx = len(c.buf)
+	c.req = c.storage[:1]
+	c.req = grp.appendTo(c.req)
+	c.idx = len(c.req)
 	if len(parameters) > 0 {
-		c.buf = append(c.buf, ',')
-		c.buf = append(c.buf, parameters...)
+		c.req = append(c.req, ',')
+		c.req = append(c.req, parameters...)
 	}
-	c.buf = append(c.buf, '\r', '\n')
+	c.req = append(c.req, '\r', '\n')
 	return c
 }
 
 func (c Command) request() []byte {
-	return c.buf
+	return c.req
 }
 
 // The protocol response always includes the original command as a prefix.
 func (c Command) responsePrefix() []byte {
-	c.buf[0] = '~'
-	c.buf[len(c.buf)-2] = ','
-	return c.buf[:len(c.buf)-1]
+	c.req[0] = '~'
+	c.req[len(c.req)-2] = ','
+	return c.req[:len(c.req)-1]
 }
 
 // Call sends the command to the Lutron system, waits for a prompt
 // and returns the response.
-func (c Command) Call(ctx context.Context, s streamconn.Session) ([]string, error) {
+func (c Command) Call(ctx context.Context, s streamconn.Session) (string, error) {
 	s.Send(ctx, c.request())
 	response := s.ReadUntil(ctx, "QNET> ")
 	if err := s.Err(); err != nil {
-		return nil, err
+		return "", err
 	}
 	return ParseResponse(c.responsePrefix(), qsPrompt, response)
 }

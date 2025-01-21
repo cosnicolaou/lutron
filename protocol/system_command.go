@@ -53,7 +53,7 @@ func System(ctx context.Context, s streamconn.Session, set bool, action SystemAc
 	if len(r) == 0 {
 		return "", ErrorNullParsedResponse
 	}
-	return r[0], nil
+	return r, nil
 }
 
 func SystemQuery(ctx context.Context, s streamconn.Session, action SystemActions) (string, error) {
