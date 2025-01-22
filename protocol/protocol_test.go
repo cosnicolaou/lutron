@@ -55,7 +55,7 @@ func TestParseResponse(t *testing.T) {
 
 	pr := func(i int, c, p, r string) string {
 		t.Helper()
-		line, err := protocol.ParseResponse([]byte(c), []byte(p), []byte(r))
+		line, err := protocol.ParseResponse([]byte(c), []byte(r))
 		if err != nil {
 			t.Fatalf("unexpected error for case %v: %q: %v", i, c, err)
 		}
