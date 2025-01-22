@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/cosnicolaou/automation/net/streamconn"
 )
@@ -69,7 +70,7 @@ func parseResponseLine(cmd, response []byte) (string, error) {
 // ParseResponse parses a possibly multi-line response from the Lutron system
 // looking for a response to the issued command. There may be multiple other
 // responses due to monitoring outpot from the system.
-func ParseResponse(cmd, _, response []byte) (string, error) {
+func ParseResponse(cmd, response []byte) (string, error) {
 	var line []byte
 	for _, b := range response {
 		if b == 0x00 { // the QS responses sometimes include leading null byte
@@ -88,7 +89,7 @@ func ParseResponse(cmd, _, response []byte) (string, error) {
 	if len(line) > 0 && bytes.HasPrefix(line, cmd) {
 		return parseResponseLine(cmd, line)
 	}
-	return "", ErrorNullParsedResponse
+	return "", nil
 }
 
 type CommandGroup int
@@ -104,6 +105,7 @@ const (
 type Command struct {
 	storage [128]byte
 	req     []byte
+	custom  []byte
 	idx     int
 }
 
@@ -123,6 +125,9 @@ func (cg CommandGroup) appendTo(b []byte) []byte {
 	return b
 }
 
+// NewCommand creates a new command with the given group, set flag and
+// parameters. A response is expected that includes the issued command
+// as a prefix.
 func NewCommand(grp CommandGroup, set bool, parameters []byte) Command {
 	c := Command{}
 	if set {
@@ -141,12 +146,19 @@ func NewCommand(grp CommandGroup, set bool, parameters []byte) Command {
 	return c
 }
 
+func (c *Command) SetCustomResponse(r []byte) {
+	c.custom = slices.Clone(r)
+}
+
 func (c Command) request() []byte {
 	return c.req
 }
 
 // The protocol response always includes the original command as a prefix.
 func (c Command) responsePrefix() []byte {
+	if c.custom != nil {
+		return c.custom
+	}
 	c.req[0] = '~'
 	c.req[len(c.req)-2] = ','
 	return c.req[:len(c.req)-1]
@@ -160,5 +172,24 @@ func (c Command) Call(ctx context.Context, s streamconn.Session) (string, error)
 	if err := s.Err(); err != nil {
 		return "", err
 	}
-	return ParseResponse(c.responsePrefix(), qsPrompt, response)
+	r, err := ParseResponse(c.responsePrefix(), response)
+	if err != nil {
+		return "", err
+	}
+	if r == "" {
+		return "", ErrorNullParsedResponse
+	}
+	return r, nil
+}
+
+// Invoke sends the command to the Lutron system, waits for a prompt
+// and returns. A response is not expected.
+func (c Command) Invoke(ctx context.Context, s streamconn.Session) error {
+	s.Send(ctx, c.request())
+	response := s.ReadUntil(ctx, "QNET> ")
+	if err := s.Err(); err != nil {
+		return err
+	}
+	_, err := ParseResponse(c.responsePrefix(), response)
+	return err
 }

@@ -46,6 +46,9 @@ func NormalizeTimeZone(tz string) string {
 // System sends a '[#?]System' command to the Lutron system.
 func System(ctx context.Context, s streamconn.Session, set bool, action SystemActions) (string, error) {
 	cmd := NewCommand(SystemCommands, set, []byte(strconv.Itoa(int(action))))
+	if action == SystemOSRev {
+		cmd.SetCustomResponse([]byte("OS Firmware Revision ="))
+	}
 	r, err := cmd.Call(ctx, s)
 	if err != nil {
 		return "", err

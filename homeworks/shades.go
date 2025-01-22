@@ -65,8 +65,7 @@ func (sb hwShadeBase) operations(raise, lower, stop, set devices.Operation) map[
 }
 
 func (sb hwShadeBase) shadeCommand(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup, pars []byte) error {
-	_, err := protocol.NewCommand(cg, true, pars).Call(ctx, s)
-	return err
+	return protocol.NewCommand(cg, true, pars).Invoke(ctx, s)
 }
 
 func (sb hwShadeBase) raiseShade(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup) error {
