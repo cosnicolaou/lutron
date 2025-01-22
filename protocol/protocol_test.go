@@ -53,7 +53,7 @@ func TestLogin(t *testing.T) {
 
 func TestParseResponse(t *testing.T) {
 
-	pr := func(i int, c, p, r string) string {
+	pr := func(i int, c, r string) string {
 		t.Helper()
 		line, err := protocol.ParseResponse([]byte(c), []byte(r))
 		if err != nil {
@@ -86,16 +86,16 @@ func TestParseResponse(t *testing.T) {
 		{"~SYSTEM,1,", "~SYSTEM,1,18:33:16\r", "18:33:16"},
 		{"~SYSTEM,2,", "~SYSTEM,2,11/17/2024\r", "11/17/2024"},
 	} {
-		if got, want := pr(i, tc.cmd, "QNET> ", withPrompt(tc.resp)), tc.want; got != want {
+		if got, want := pr(i, tc.cmd, withPrompt(tc.resp)), tc.want; got != want {
 			t.Errorf("%v: %v: got %v, want %v", i, tc.cmd, got, want)
 		}
-		if got, want := pr(i, tc.cmd, "QNET> ", withPrompt(extraResponses+tc.resp)), tc.want; got != want {
+		if got, want := pr(i, tc.cmd, withPrompt(extraResponses+tc.resp)), tc.want; got != want {
 			t.Errorf("%v: %v: got %v, want %v", i, tc.cmd, got, want)
 		}
-		if got, want := pr(i, tc.cmd, "QNET> ", withPrompt(extraResponses+tc.resp+"\r\n"+extraResponses)), tc.want; got != want {
+		if got, want := pr(i, tc.cmd, withPrompt(extraResponses+tc.resp+"\r\n"+extraResponses)), tc.want; got != want {
 			t.Errorf("%v: %v: got %v, want %v", i, tc.cmd, got, want)
 		}
-		if got, want := pr(i, tc.cmd, "QNET> ", withPrompt(extraResponses+tc.resp+"\r\n"+extraResponses)), tc.want; got != want {
+		if got, want := pr(i, tc.cmd, withPrompt(extraResponses+tc.resp+"\r\n"+extraResponses)), tc.want; got != want {
 			t.Errorf("%v: %v: got %v, want %v", i, tc.cmd, got, want)
 		}
 	}
