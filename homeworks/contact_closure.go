@@ -47,28 +47,28 @@ func (cc *ContactClosure) ControlledBy() devices.Controller {
 	return cc.processor
 }
 
-func (cc *ContactClosure) PulseOn(ctx context.Context, _ devices.OperationArgs) error {
+func (cc *ContactClosure) PulseOn(ctx context.Context, _ devices.OperationArgs) (any, error) {
 	s := cc.processor.Session(ctx)
 	return contactClosurePulse(ctx, s, []byte(strconv.Itoa(cc.DeviceConfigCustom.ID)), cc.DeviceConfigCustom.Duration, '1', '0')
 }
 
-func (cc *ContactClosure) PulseOff(ctx context.Context, _ devices.OperationArgs) error {
+func (cc *ContactClosure) PulseOff(ctx context.Context, _ devices.OperationArgs) (any, error) {
 	s := cc.processor.Session(ctx)
 	return contactClosurePulse(ctx, s, []byte(strconv.Itoa(cc.DeviceConfigCustom.ID)), cc.DeviceConfigCustom.Duration, '0', '1')
 }
 
-func contactClosurePulse(ctx context.Context, s streamconn.Session, id []byte, pulse time.Duration, l0, l1 byte) error {
+func contactClosurePulse(ctx context.Context, s streamconn.Session, id []byte, pulse time.Duration, l0, l1 byte) (any, error) {
 	pars := make([]byte, 0, 32)
 	pars = append(pars, id...)
 	pars = append(pars, ',', '1', ',', l0)
 	_, err := protocol.NewCommand(protocol.OutputCommands, true, pars).Call(ctx, s)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	time.Sleep(pulse)
 	pars[len(pars)-1] = l1
 	_, err = protocol.NewCommand(protocol.OutputCommands, true, pars).Call(ctx, s)
-	return err
+	return nil, err
 }
 
 type ContactClosureOpenCloseConfig struct {
@@ -105,7 +105,7 @@ func (cc *ContactClosureOpenClose) ControlledBy() devices.Controller {
 	return cc.processor
 }
 
-func (cc *ContactClosureOpenClose) pulse(ctx context.Context, id []byte) error {
+func (cc *ContactClosureOpenClose) pulse(ctx context.Context, id []byte) (any, error) {
 	s := cc.processor.Session(ctx)
 	if cc.DeviceConfigCustom.PulseLow {
 		return contactClosurePulse(ctx, s, id, cc.DeviceConfigCustom.Duration, '0', '1')
@@ -113,12 +113,12 @@ func (cc *ContactClosureOpenClose) pulse(ctx context.Context, id []byte) error {
 	return contactClosurePulse(ctx, s, id, cc.DeviceConfigCustom.Duration, '1', '0')
 }
 
-func (cc *ContactClosureOpenClose) Open(ctx context.Context, _ devices.OperationArgs) error {
+func (cc *ContactClosureOpenClose) Open(ctx context.Context, _ devices.OperationArgs) (any, error) {
 	id := []byte(strconv.Itoa(cc.DeviceConfigCustom.OpenID))
 	return cc.pulse(ctx, id)
 }
 
-func (cc *ContactClosureOpenClose) Close(ctx context.Context, _ devices.OperationArgs) error {
+func (cc *ContactClosureOpenClose) Close(ctx context.Context, _ devices.OperationArgs) (any, error) {
 	id := []byte(strconv.Itoa(cc.DeviceConfigCustom.CloseID))
 	return cc.pulse(ctx, id)
 }

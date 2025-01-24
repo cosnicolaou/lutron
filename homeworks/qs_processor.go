@@ -59,34 +59,47 @@ func (p *QSProcessor) Implementation() any {
 
 func (p *QSProcessor) Operations() map[string]devices.Operation {
 	return map[string]devices.Operation{
-		"gettime": func(ctx context.Context, args devices.OperationArgs) error {
+		"gettime": func(ctx context.Context, args devices.OperationArgs) (any, error) {
 			t, err := protocol.GetTime(ctx, p.Session(ctx))
 			if err == nil {
 				fmt.Fprintf(args.Writer, "gettime: %v\n", t)
 			}
-			return err
+			return struct {
+				Time string `json:"time"`
+			}{Time: t.String()}, err
 		},
-		"getlocation": func(ctx context.Context, args devices.OperationArgs) error {
+		"getlocation": func(ctx context.Context, args devices.OperationArgs) (any, error) {
 			lat, long, err := protocol.GetLatLong(ctx, p.Session(ctx))
 			if err == nil {
 				fmt.Fprintf(args.Writer, "latlong: %vN %vW\n", lat, long)
 			}
-			return err
+			return struct {
+				Latitude  float64 `json:"latitude"`
+				Longitude float64 `json:"longitude"`
+			}{Latitude: lat, Longitude: long}, err
 		},
-		"getsuntimes": func(ctx context.Context, args devices.OperationArgs) error {
+		"getsuntimes": func(ctx context.Context, args devices.OperationArgs) (any, error) {
 			rise, set, err := protocol.GetSunriseSunset(ctx, p.Session(ctx))
 			if err == nil {
 				fmt.Fprintf(args.Writer, "sunrise: %v, sunset: %v\n",
 					rise.Format("15:04:05"), set.Format("15:04:05"))
 			}
-			return err
+			return struct {
+				SunRise string `json:"sunrise"`
+				SunSet  string `json:"sunset"`
+			}{
+				SunRise: rise.Format("15:04:05"),
+				SunSet:  set.Format("15:04:05"),
+			}, err
 		},
-		"os_version": func(ctx context.Context, args devices.OperationArgs) error {
+		"os_version": func(ctx context.Context, args devices.OperationArgs) (any, error) {
 			osv, err := protocol.GetVersion(ctx, p.Session(ctx))
 			if err == nil {
 				fmt.Fprintf(args.Writer, "%v\n", osv)
 			}
-			return err
+			return struct {
+				OSVersion string `json:"os_version"`
+			}{OSVersion: osv}, err
 		},
 	}
 }
