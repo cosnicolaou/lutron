@@ -7,7 +7,6 @@ package homeworks
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strconv"
 
 	"github.com/cosnicolaou/automation/devices"
@@ -33,9 +32,7 @@ type HWShadeConfig struct {
 
 type hwShadeBase struct {
 	devices.DeviceBase[HWShadeConfig]
-
 	processor *QSProcessor
-	logger    *slog.Logger
 }
 
 func (sb *hwShadeBase) SetController(c devices.Controller) {

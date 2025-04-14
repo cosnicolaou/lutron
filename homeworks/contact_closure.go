@@ -61,13 +61,20 @@ func contactClosurePulse(ctx context.Context, s streamconn.Session, id []byte, p
 	pars := make([]byte, 0, 32)
 	pars = append(pars, id...)
 	pars = append(pars, ',', '1', ',', l0)
-	_, err := protocol.NewCommand(protocol.OutputCommands, true, pars).Call(ctx, s)
+	// Ignore any response since the response may refer
+	// to integration IDs that don't match the request.
+	// This happens when the contact closure is activated
+	// via a visor control for example where the request is
+	// sent to the visor control, but the system issues
+	// monitoring commands that refer to the integration IDs
+	// of the devices connected to the visor control.
+	err := protocol.NewCommand(protocol.OutputCommands, true, pars).Invoke(ctx, s)
 	if err != nil {
 		return nil, err
 	}
 	time.Sleep(pulse)
 	pars[len(pars)-1] = l1
-	_, err = protocol.NewCommand(protocol.OutputCommands, true, pars).Call(ctx, s)
+	err = protocol.NewCommand(protocol.OutputCommands, true, pars).Invoke(ctx, s)
 	return nil, err
 }
 
