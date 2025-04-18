@@ -6,9 +6,11 @@ package homeworks
 
 import (
 	"context"
+	"log/slog"
 	"strconv"
 	"time"
 
+	"cloudeng.io/logging/ctxlog"
 	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/automation/net/streamconn"
 	"github.com/cosnicolaou/lutron/protocol"
@@ -121,11 +123,17 @@ func (cc *ContactClosureOpenClose) pulse(ctx context.Context, id []byte) (any, e
 }
 
 func (cc *ContactClosureOpenClose) Open(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	id := []byte(strconv.Itoa(cc.DeviceConfigCustom.OpenID))
+	ids := strconv.Itoa(cc.DeviceConfigCustom.OpenID)
+	id := []byte(ids)
+	grp := slog.Group("lutron", "device", "contact-closure", "id", ids, "op", "open")
+	ctx = ctxlog.ContextWith(ctx, grp)
 	return cc.pulse(ctx, id)
 }
 
 func (cc *ContactClosureOpenClose) Close(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	id := []byte(strconv.Itoa(cc.DeviceConfigCustom.CloseID))
+	ids := strconv.Itoa(cc.DeviceConfigCustom.CloseID)
+	id := []byte(ids)
+	grp := slog.Group("lutron", "device", "contact-closure", "id", ids, "op", "close")
+	ctx = ctxlog.ContextWith(ctx, grp)
 	return cc.pulse(ctx, id)
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloudeng.io/cmdutil/keystore"
+	"cloudeng.io/logging/ctxlog"
 	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/automation/net/netutil"
 	"github.com/cosnicolaou/automation/net/streamconn"
@@ -39,7 +40,7 @@ func NewQSProcessor(_ devices.Options) *QSProcessor {
 }
 
 func (p *QSProcessor) loggingContext(ctx context.Context) context.Context {
-	return devices.ContextWithLoggerAttributes(ctx, "protocol", "homeworks-qs")
+	return ctxlog.ContextWith(ctx, "protocol", "homeworks-qs")
 }
 
 func (p *QSProcessor) UnmarshalYAML(node *yaml.Node) error {

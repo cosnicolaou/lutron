@@ -17,14 +17,8 @@ func NewDevice(typ string, _ devices.Options) (devices.Device, error) {
 	switch typ {
 	case "shadegrp":
 		return &HWShadeGroup{hwShadeBase: hwShadeBase{}}, nil
-		//logger: opts.Logger.With(
-		//	"protocol", "homeworks-qs",
-		//	"device", "shadegrp")}}, nil
 	case "shade":
 		return &HWShade{hwShadeBase: hwShadeBase{}}, nil
-		//logger: opts.Logger.With(
-		//	"protocol", "homeworks-qs",
-		//	"device", "shade")}}, nil
 	case "contact-closure":
 		return &ContactClosure{}, nil
 	case "contact-closure-open-close":

@@ -7,8 +7,10 @@ package homeworks
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 
+	"cloudeng.io/logging/ctxlog"
 	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/automation/net/streamconn"
 	"github.com/cosnicolaou/lutron/protocol"
@@ -61,24 +63,26 @@ func (sb hwShadeBase) operations(raise, lower, stop, set devices.Operation) map[
 	}
 }
 
-func (sb hwShadeBase) shadeCommand(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup, pars []byte) (any, error) {
+func (sb hwShadeBase) runShadeCommand(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup, pars []byte, op string) (any, error) {
+	grp := slog.Group("lutron", "device", "shade", "id", sb.DeviceConfigCustom.ID, "op", op)
+	ctx = ctxlog.ContextWith(ctx, grp)
 	err := protocol.NewCommand(cg, true, pars).Invoke(ctx, s)
 	return nil, err
 }
 
 func (sb hwShadeBase) raiseShade(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup) (any, error) {
 	pars := append([]byte(strconv.Itoa(sb.DeviceConfigCustom.ID)), ',', '2')
-	return sb.shadeCommand(ctx, s, cg, pars)
+	return sb.runShadeCommand(ctx, s, cg, pars, "raise")
 }
 
 func (sb hwShadeBase) lowerShade(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup) (any, error) {
 	pars := append([]byte(strconv.Itoa(sb.DeviceConfigCustom.ID)), ',', '3')
-	return sb.shadeCommand(ctx, s, cg, pars)
+	return sb.runShadeCommand(ctx, s, cg, pars, "lower")
 }
 
 func (sb hwShadeBase) stopShade(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup) (any, error) {
 	pars := append([]byte(strconv.Itoa(sb.DeviceConfigCustom.ID)), ',', '4')
-	return sb.shadeCommand(ctx, s, cg, pars)
+	return sb.runShadeCommand(ctx, s, cg, pars, "stop")
 }
 
 func (sb hwShadeBase) setShadeLevel(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup, args []string) (any, error) {
@@ -88,7 +92,7 @@ func (sb hwShadeBase) setShadeLevel(ctx context.Context, s streamconn.Session, c
 	}
 	pars := append([]byte(strconv.Itoa(sb.DeviceConfigCustom.ID)), ',', '1', ',')
 	pars = append(pars, []byte(strconv.Itoa(level))...)
-	return sb.shadeCommand(ctx, s, cg, pars)
+	return sb.runShadeCommand(ctx, s, cg, pars, "set")
 }
 
 // HWShadeGroupConfig represents the configuration for a group of shades
