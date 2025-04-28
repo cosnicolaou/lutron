@@ -2,12 +2,16 @@ cloudeng.io/cmdutil v0.0.0-20250428223124-bb967ac9f3f8 h1:hs9tFbld9uuuOzr++6JS6L
 cloudeng.io/cmdutil v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:cdA+lzBTdzRDglLOacu63J+tgu/TO3IQ8jGskda6ntQ=
 cloudeng.io/datetime v0.0.0-20250428004842-3ae3ab52e2d8 h1:gbu/RNGSXC0CzSS+8X3C1juqdntGVp5U0CDf3X9Gh0I=
 cloudeng.io/datetime v0.0.0-20250428004842-3ae3ab52e2d8/go.mod h1:/vJ5Opdclc6UQ0nypL8y1EENDITc+JsV3k43pi/H6NU=
+cloudeng.io/datetime v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:/vJ5Opdclc6UQ0nypL8y1EENDITc+JsV3k43pi/H6NU=
 cloudeng.io/file v0.0.0-20250428004842-3ae3ab52e2d8 h1:UHsXfnV2Ur8fzSwZR4ApMtWjRRRiaWjBZ/9bXkaporo=
 cloudeng.io/file v0.0.0-20250428004842-3ae3ab52e2d8/go.mod h1:oim2jVljgZXzwJJSywUcdyROOSEvhLjIQvKDv+79tVI=
+cloudeng.io/file v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:oim2jVljgZXzwJJSywUcdyROOSEvhLjIQvKDv+79tVI=
 cloudeng.io/logging v0.0.0-20250428223124-bb967ac9f3f8 h1:/mGihcZqyJOS3jQOrTEZIzlLiX8gaDaasP736sTOjqY=
 cloudeng.io/logging v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:D0TUs3Aiwa1c7xI/TE7JITYnICck34r6DR5twakJjIs=
 github.com/cosnicolaou/automation v0.0.0-20250414044827-b7c9220979d8 h1:i5UcchK6FjuB4QH67cAnqyRtm1TvYZf425a8nPGN6Pk=
 github.com/cosnicolaou/automation v0.0.0-20250414044827-b7c9220979d8/go.mod h1:OLcpZsCDevmMfXdxXS6bOvJxguCP9kP7B3dL9hW5GpU=
+github.com/cosnicolaou/automation v0.0.0-20250428235220-63c5b2ef90d7 h1:ndMuMDbCpDhvqTZpKTHzBf0gRiW2rguzCVj16T5rLt0=
+github.com/cosnicolaou/automation v0.0.0-20250428235220-63c5b2ef90d7/go.mod h1:2+X6EXF3vBXmtZp5nB4+Ia1f15LEQjjZTR5mnElBHmg=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
