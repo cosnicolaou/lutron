@@ -20,6 +20,8 @@ cloudeng.io/logging v0.0.0-20250417183712-58bca6dba505 h1:Gng+gHZgBwmIW9Y23YGw91
 cloudeng.io/logging v0.0.0-20250417183712-58bca6dba505/go.mod h1:D0TUs3Aiwa1c7xI/TE7JITYnICck34r6DR5twakJjIs=
 cloudeng.io/logging v0.0.0-20250428004842-3ae3ab52e2d8 h1:AGE7XD69GvWcqULKMQQ4hbvtcSdTjBtPzVoMvcNy+h8=
 cloudeng.io/logging v0.0.0-20250428004842-3ae3ab52e2d8/go.mod h1:D0TUs3Aiwa1c7xI/TE7JITYnICck34r6DR5twakJjIs=
+cloudeng.io/logging v0.0.0-20250428223124-bb967ac9f3f8 h1:/mGihcZqyJOS3jQOrTEZIzlLiX8gaDaasP736sTOjqY=
+cloudeng.io/logging v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:D0TUs3Aiwa1c7xI/TE7JITYnICck34r6DR5twakJjIs=
 github.com/cosnicolaou/automation v0.0.0-20250123200349-f6cb99005da2 h1:RerzH4smpCO2tDqDGxfzvdEZZw2W4dUrhfuF+M/lZRo=
 github.com/cosnicolaou/automation v0.0.0-20250123200349-f6cb99005da2/go.mod h1:99GBZO996l8LCP6YWKQ3woKAEzHdqxamZ+LRQBElYmM=
 github.com/cosnicolaou/automation v0.0.0-20250414044827-b7c9220979d8 h1:i5UcchK6FjuB4QH67cAnqyRtm1TvYZf425a8nPGN6Pk=

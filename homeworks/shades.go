@@ -65,7 +65,7 @@ func (sb hwShadeBase) operations(raise, lower, stop, set devices.Operation) map[
 
 func (sb hwShadeBase) runShadeCommand(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup, pars []byte, op string) (any, error) {
 	grp := slog.Group("lutron", "device", "shade", "id", sb.DeviceConfigCustom.ID, "op", op)
-	ctx = ctxlog.ContextWith(ctx, grp)
+	ctx = ctxlog.WithAttributes(ctx, grp)
 	err := protocol.NewCommand(cg, true, pars).Invoke(ctx, s)
 	return nil, err
 }

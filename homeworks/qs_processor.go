@@ -135,7 +135,7 @@ func (p *QSProcessor) Disconnect(ctx context.Context, sess streamconn.Session) e
 }
 
 func (p *QSProcessor) loggingContext(ctx context.Context) context.Context {
-	return ctxlog.ContextWith(ctx, "protocol", "homeworks-qs")
+	return ctxlog.WithAttributes(ctx, "protocol", "homeworks-qs")
 }
 
 // Session returns an authenticated session to the QS processor. If

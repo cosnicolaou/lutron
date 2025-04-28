@@ -130,7 +130,7 @@ func (cc *ContactClosureOpenClose) Open(ctx context.Context, _ devices.Operation
 	ids := strconv.Itoa(cc.DeviceConfigCustom.OpenID)
 	id := []byte(ids)
 	grp := slog.Group("lutron", "device", "contact-closure", "id", ids, "op", "open")
-	ctx = ctxlog.ContextWith(ctx, grp)
+	ctx = ctxlog.WithAttributes(ctx, grp)
 	return cc.pulse(ctx, id)
 }
 
@@ -138,6 +138,6 @@ func (cc *ContactClosureOpenClose) Close(ctx context.Context, _ devices.Operatio
 	ids := strconv.Itoa(cc.DeviceConfigCustom.CloseID)
 	id := []byte(ids)
 	grp := slog.Group("lutron", "device", "contact-closure", "id", ids, "op", "close")
-	ctx = ctxlog.ContextWith(ctx, grp)
+	ctx = ctxlog.WithAttributes(ctx, grp)
 	return cc.pulse(ctx, id)
 }
