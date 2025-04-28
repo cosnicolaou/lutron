@@ -39,10 +39,6 @@ func NewQSProcessor(_ devices.Options) *QSProcessor {
 	return p
 }
 
-func (p *QSProcessor) loggingContext(ctx context.Context) context.Context {
-	return ctxlog.ContextWith(ctx, "protocol", "homeworks-qs")
-}
-
 func (p *QSProcessor) UnmarshalYAML(node *yaml.Node) error {
 	if err := node.Decode(&p.ControllerConfigCustom); err != nil {
 		return err
@@ -61,8 +57,8 @@ func (p *QSProcessor) Implementation() any {
 func (p *QSProcessor) Operations() map[string]devices.Operation {
 	return map[string]devices.Operation{
 		"gettime": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx = p.loggingContext(ctx)
-			t, err := protocol.GetTime(ctx, p.Session(ctx))
+			ctx, sess := p.Session(ctx)
+			t, err := protocol.GetTime(ctx, sess)
 			if err == nil {
 				fmt.Fprintf(args.Writer, "gettime: %v\n", t)
 			}
@@ -71,8 +67,8 @@ func (p *QSProcessor) Operations() map[string]devices.Operation {
 			}{Time: t.String()}, err
 		},
 		"getlocation": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx = p.loggingContext(ctx)
-			lat, long, err := protocol.GetLatLong(ctx, p.Session(ctx))
+			ctx, sess := p.Session(ctx)
+			lat, long, err := protocol.GetLatLong(ctx, sess)
 			if err == nil {
 				fmt.Fprintf(args.Writer, "latlong: %vN %vW\n", lat, long)
 			}
@@ -82,8 +78,8 @@ func (p *QSProcessor) Operations() map[string]devices.Operation {
 			}{Latitude: lat, Longitude: long}, err
 		},
 		"getsuntimes": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx = p.loggingContext(ctx)
-			rise, set, err := protocol.GetSunriseSunset(ctx, p.Session(ctx))
+			ctx, sess := p.Session(ctx)
+			rise, set, err := protocol.GetSunriseSunset(ctx, sess)
 			if err == nil {
 				fmt.Fprintf(args.Writer, "sunrise: %v, sunset: %v\n",
 					rise.Format("15:04:05"), set.Format("15:04:05"))
@@ -97,8 +93,8 @@ func (p *QSProcessor) Operations() map[string]devices.Operation {
 			}, err
 		},
 		"os_version": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx = p.loggingContext(ctx)
-			osv, err := protocol.GetVersion(ctx, p.Session(ctx))
+			ctx, sess := p.Session(ctx)
+			osv, err := protocol.GetVersion(ctx, sess)
 			if err == nil {
 				fmt.Fprintf(args.Writer, "%v\n", osv)
 			}
@@ -119,7 +115,6 @@ func (*QSProcessor) OperationsHelp() map[string]string {
 }
 
 func (p *QSProcessor) Connect(ctx context.Context, idle netutil.IdleReset) (streamconn.Session, error) {
-	ctx = p.loggingContext(ctx)
 	transport, err := telnet.Dial(ctx, p.ControllerConfigCustom.IPAddress, p.Timeout)
 	if err != nil {
 		return nil, err
@@ -136,15 +131,18 @@ func (p *QSProcessor) Connect(ctx context.Context, idle netutil.IdleReset) (stre
 }
 
 func (p *QSProcessor) Disconnect(ctx context.Context, sess streamconn.Session) error {
-	ctx = p.loggingContext(ctx)
 	return sess.Close(ctx)
+}
+
+func (p *QSProcessor) loggingContext(ctx context.Context) context.Context {
+	return ctxlog.ContextWith(ctx, "protocol", "homeworks-qs")
 }
 
 // Session returns an authenticated session to the QS processor. If
 // an error is encountered then an error session is returned.
-func (p *QSProcessor) Session(ctx context.Context) streamconn.Session {
+func (p *QSProcessor) Session(ctx context.Context) (context.Context, streamconn.Session) {
 	ctx = p.loggingContext(ctx)
-	return p.ondemand.Connection(ctx)
+	return ctx, p.ondemand.Connection(ctx)
 }
 
 func (p *QSProcessor) Close(ctx context.Context) error {

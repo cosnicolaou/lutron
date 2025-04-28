@@ -8,6 +8,7 @@ import (
 	"context"
 	"log/slog"
 	"strconv"
+	"sync"
 	"time"
 
 	"cloudeng.io/logging/ctxlog"
@@ -50,12 +51,12 @@ func (cc *ContactClosure) ControlledBy() devices.Controller {
 }
 
 func (cc *ContactClosure) PulseOn(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	s := cc.processor.Session(ctx)
+	ctx, s := cc.processor.Session(ctx)
 	return contactClosurePulse(ctx, s, []byte(strconv.Itoa(cc.DeviceConfigCustom.ID)), cc.DeviceConfigCustom.Duration, '1', '0')
 }
 
 func (cc *ContactClosure) PulseOff(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	s := cc.processor.Session(ctx)
+	ctx, s := cc.processor.Session(ctx)
 	return contactClosurePulse(ctx, s, []byte(strconv.Itoa(cc.DeviceConfigCustom.ID)), cc.DeviceConfigCustom.Duration, '0', '1')
 }
 
@@ -90,6 +91,7 @@ type ContactClosureOpenCloseConfig struct {
 type ContactClosureOpenClose struct {
 	devices.DeviceBase[ContactClosureOpenCloseConfig]
 	processor *QSProcessor
+	mu        sync.Mutex
 }
 
 func (cc *ContactClosureOpenClose) Operations() map[string]devices.Operation {
@@ -115,7 +117,9 @@ func (cc *ContactClosureOpenClose) ControlledBy() devices.Controller {
 }
 
 func (cc *ContactClosureOpenClose) pulse(ctx context.Context, id []byte) (any, error) {
-	s := cc.processor.Session(ctx)
+	cc.mu.Lock()
+	defer cc.mu.Unlock()
+	ctx, s := cc.processor.Session(ctx)
 	if cc.DeviceConfigCustom.PulseLow {
 		return contactClosurePulse(ctx, s, id, cc.DeviceConfigCustom.Duration, '0', '1')
 	}

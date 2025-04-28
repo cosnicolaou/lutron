@@ -111,22 +111,22 @@ func (sg *HWShadeGroup) Operations() map[string]devices.Operation {
 }
 
 func (sg *HWShadeGroup) raise(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	sess := sg.processor.Session(ctx)
+	ctx, sess := sg.processor.Session(ctx)
 	return sg.raiseShade(ctx, sess, protocol.ShadeGroupCommands)
 }
 
 func (sg *HWShadeGroup) lower(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	sess := sg.processor.Session(ctx)
+	ctx, sess := sg.processor.Session(ctx)
 	return sg.lowerShade(ctx, sess, protocol.ShadeGroupCommands)
 }
 
 func (sg *HWShadeGroup) stop(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	sess := sg.processor.Session(ctx)
+	ctx, sess := sg.processor.Session(ctx)
 	return sg.stopShade(ctx, sess, protocol.ShadeGroupCommands)
 }
 
 func (sg *HWShadeGroup) set(ctx context.Context, args devices.OperationArgs) (any, error) {
-	sess := sg.processor.Session(ctx)
+	ctx, sess := sg.processor.Session(ctx)
 	return sg.setShadeLevel(ctx, sess, protocol.ShadeGroupCommands, args.Args)
 }
 
@@ -135,21 +135,21 @@ func (s *HWShade) Operations() map[string]devices.Operation {
 }
 
 func (s *HWShade) raise(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	sess := s.processor.Session(ctx)
+	ctx, sess := s.processor.Session(ctx)
 	return s.raiseShade(ctx, sess, protocol.OutputCommands)
 }
 
 func (s *HWShade) lower(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	sess := s.processor.Session(ctx)
+	ctx, sess := s.processor.Session(ctx)
 	return s.lowerShade(ctx, sess, protocol.OutputCommands)
 }
 
 func (s *HWShade) stop(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	sess := s.processor.Session(ctx)
+	ctx, sess := s.processor.Session(ctx)
 	return s.stopShade(ctx, sess, protocol.OutputCommands)
 }
 
 func (s *HWShade) set(ctx context.Context, args devices.OperationArgs) (any, error) {
-	sess := s.processor.Session(ctx)
+	ctx, sess := s.processor.Session(ctx)
 	return s.setShadeLevel(ctx, sess, protocol.OutputCommands, args.Args)
 }
