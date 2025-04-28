@@ -6,9 +6,12 @@ package homeworks
 
 import (
 	"context"
+	"log/slog"
 	"strconv"
+	"sync"
 	"time"
 
+	"cloudeng.io/logging/ctxlog"
 	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/automation/net/streamconn"
 	"github.com/cosnicolaou/lutron/protocol"
@@ -48,12 +51,12 @@ func (cc *ContactClosure) ControlledBy() devices.Controller {
 }
 
 func (cc *ContactClosure) PulseOn(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	s := cc.processor.Session(ctx)
+	ctx, s := cc.processor.Session(ctx)
 	return contactClosurePulse(ctx, s, []byte(strconv.Itoa(cc.DeviceConfigCustom.ID)), cc.DeviceConfigCustom.Duration, '1', '0')
 }
 
 func (cc *ContactClosure) PulseOff(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	s := cc.processor.Session(ctx)
+	ctx, s := cc.processor.Session(ctx)
 	return contactClosurePulse(ctx, s, []byte(strconv.Itoa(cc.DeviceConfigCustom.ID)), cc.DeviceConfigCustom.Duration, '0', '1')
 }
 
@@ -61,13 +64,20 @@ func contactClosurePulse(ctx context.Context, s streamconn.Session, id []byte, p
 	pars := make([]byte, 0, 32)
 	pars = append(pars, id...)
 	pars = append(pars, ',', '1', ',', l0)
-	_, err := protocol.NewCommand(protocol.OutputCommands, true, pars).Call(ctx, s)
+	// Ignore any response since the response may refer
+	// to integration IDs that don't match the request.
+	// This happens when the contact closure is activated
+	// via a visor control for example where the request is
+	// sent to the visor control, but the system issues
+	// monitoring commands that refer to the integration IDs
+	// of the devices connected to the visor control.
+	err := protocol.NewCommand(protocol.OutputCommands, true, pars).Invoke(ctx, s)
 	if err != nil {
 		return nil, err
 	}
 	time.Sleep(pulse)
 	pars[len(pars)-1] = l1
-	_, err = protocol.NewCommand(protocol.OutputCommands, true, pars).Call(ctx, s)
+	err = protocol.NewCommand(protocol.OutputCommands, true, pars).Invoke(ctx, s)
 	return nil, err
 }
 
@@ -81,6 +91,7 @@ type ContactClosureOpenCloseConfig struct {
 type ContactClosureOpenClose struct {
 	devices.DeviceBase[ContactClosureOpenCloseConfig]
 	processor *QSProcessor
+	mu        sync.Mutex
 }
 
 func (cc *ContactClosureOpenClose) Operations() map[string]devices.Operation {
@@ -106,7 +117,9 @@ func (cc *ContactClosureOpenClose) ControlledBy() devices.Controller {
 }
 
 func (cc *ContactClosureOpenClose) pulse(ctx context.Context, id []byte) (any, error) {
-	s := cc.processor.Session(ctx)
+	cc.mu.Lock()
+	defer cc.mu.Unlock()
+	ctx, s := cc.processor.Session(ctx)
 	if cc.DeviceConfigCustom.PulseLow {
 		return contactClosurePulse(ctx, s, id, cc.DeviceConfigCustom.Duration, '0', '1')
 	}
@@ -114,11 +127,17 @@ func (cc *ContactClosureOpenClose) pulse(ctx context.Context, id []byte) (any, e
 }
 
 func (cc *ContactClosureOpenClose) Open(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	id := []byte(strconv.Itoa(cc.DeviceConfigCustom.OpenID))
+	ids := strconv.Itoa(cc.DeviceConfigCustom.OpenID)
+	id := []byte(ids)
+	grp := slog.Group("lutron", "device", "contact-closure", "id", ids, "op", "open")
+	ctx = ctxlog.ContextWith(ctx, grp)
 	return cc.pulse(ctx, id)
 }
 
 func (cc *ContactClosureOpenClose) Close(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	id := []byte(strconv.Itoa(cc.DeviceConfigCustom.CloseID))
+	ids := strconv.Itoa(cc.DeviceConfigCustom.CloseID)
+	id := []byte(ids)
+	grp := slog.Group("lutron", "device", "contact-closure", "id", ids, "op", "close")
+	ctx = ctxlog.ContextWith(ctx, grp)
 	return cc.pulse(ctx, id)
 }

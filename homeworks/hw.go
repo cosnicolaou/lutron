@@ -13,19 +13,12 @@ func NewController(typ string, opts devices.Options) (devices.Controller, error)
 	return nil, fmt.Errorf("unsupported lutron controller/processor type %s", typ)
 }
 
-func NewDevice(typ string, opts devices.Options) (devices.Device, error) {
+func NewDevice(typ string, _ devices.Options) (devices.Device, error) {
 	switch typ {
 	case "shadegrp":
-		return &HWShadeGroup{
-			hwShadeBase: hwShadeBase{
-				logger: opts.Logger.With(
-					"protocol", "homeworks-qs",
-					"device", "shadegrp")}}, nil
+		return &HWShadeGroup{hwShadeBase: hwShadeBase{}}, nil
 	case "shade":
-		return &HWShade{hwShadeBase: hwShadeBase{
-			logger: opts.Logger.With(
-				"protocol", "homeworks-qs",
-				"device", "shade")}}, nil
+		return &HWShade{hwShadeBase: hwShadeBase{}}, nil
 	case "contact-closure":
 		return &ContactClosure{}, nil
 	case "contact-closure-open-close":
