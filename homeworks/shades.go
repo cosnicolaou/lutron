@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"strconv"
 
+	"cloudeng.io/logging/ctxlog"
 	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/automation/net/streamconn"
 	"github.com/cosnicolaou/lutron/protocol"
@@ -33,9 +34,7 @@ type HWShadeConfig struct {
 
 type hwShadeBase struct {
 	devices.DeviceBase[HWShadeConfig]
-
 	processor *QSProcessor
-	logger    *slog.Logger
 }
 
 func (sb *hwShadeBase) SetController(c devices.Controller) {
@@ -64,24 +63,26 @@ func (sb hwShadeBase) operations(raise, lower, stop, set devices.Operation) map[
 	}
 }
 
-func (sb hwShadeBase) shadeCommand(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup, pars []byte) (any, error) {
+func (sb hwShadeBase) runShadeCommand(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup, pars []byte, op string) (any, error) {
+	grp := slog.Group("lutron", "device", "shade", "id", sb.DeviceConfigCustom.ID, "op", op)
+	ctx = ctxlog.WithAttributes(ctx, grp)
 	err := protocol.NewCommand(cg, true, pars).Invoke(ctx, s)
 	return nil, err
 }
 
 func (sb hwShadeBase) raiseShade(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup) (any, error) {
 	pars := append([]byte(strconv.Itoa(sb.DeviceConfigCustom.ID)), ',', '2')
-	return sb.shadeCommand(ctx, s, cg, pars)
+	return sb.runShadeCommand(ctx, s, cg, pars, "raise")
 }
 
 func (sb hwShadeBase) lowerShade(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup) (any, error) {
 	pars := append([]byte(strconv.Itoa(sb.DeviceConfigCustom.ID)), ',', '3')
-	return sb.shadeCommand(ctx, s, cg, pars)
+	return sb.runShadeCommand(ctx, s, cg, pars, "lower")
 }
 
 func (sb hwShadeBase) stopShade(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup) (any, error) {
 	pars := append([]byte(strconv.Itoa(sb.DeviceConfigCustom.ID)), ',', '4')
-	return sb.shadeCommand(ctx, s, cg, pars)
+	return sb.runShadeCommand(ctx, s, cg, pars, "stop")
 }
 
 func (sb hwShadeBase) setShadeLevel(ctx context.Context, s streamconn.Session, cg protocol.CommandGroup, args []string) (any, error) {
@@ -91,7 +92,7 @@ func (sb hwShadeBase) setShadeLevel(ctx context.Context, s streamconn.Session, c
 	}
 	pars := append([]byte(strconv.Itoa(sb.DeviceConfigCustom.ID)), ',', '1', ',')
 	pars = append(pars, []byte(strconv.Itoa(level))...)
-	return sb.shadeCommand(ctx, s, cg, pars)
+	return sb.runShadeCommand(ctx, s, cg, pars, "set")
 }
 
 // HWShadeGroupConfig represents the configuration for a group of shades
@@ -110,22 +111,22 @@ func (sg *HWShadeGroup) Operations() map[string]devices.Operation {
 }
 
 func (sg *HWShadeGroup) raise(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	sess := sg.processor.Session(ctx)
+	ctx, sess := sg.processor.Session(ctx)
 	return sg.raiseShade(ctx, sess, protocol.ShadeGroupCommands)
 }
 
 func (sg *HWShadeGroup) lower(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	sess := sg.processor.Session(ctx)
+	ctx, sess := sg.processor.Session(ctx)
 	return sg.lowerShade(ctx, sess, protocol.ShadeGroupCommands)
 }
 
 func (sg *HWShadeGroup) stop(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	sess := sg.processor.Session(ctx)
+	ctx, sess := sg.processor.Session(ctx)
 	return sg.stopShade(ctx, sess, protocol.ShadeGroupCommands)
 }
 
 func (sg *HWShadeGroup) set(ctx context.Context, args devices.OperationArgs) (any, error) {
-	sess := sg.processor.Session(ctx)
+	ctx, sess := sg.processor.Session(ctx)
 	return sg.setShadeLevel(ctx, sess, protocol.ShadeGroupCommands, args.Args)
 }
 
@@ -134,21 +135,21 @@ func (s *HWShade) Operations() map[string]devices.Operation {
 }
 
 func (s *HWShade) raise(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	sess := s.processor.Session(ctx)
+	ctx, sess := s.processor.Session(ctx)
 	return s.raiseShade(ctx, sess, protocol.OutputCommands)
 }
 
 func (s *HWShade) lower(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	sess := s.processor.Session(ctx)
+	ctx, sess := s.processor.Session(ctx)
 	return s.lowerShade(ctx, sess, protocol.OutputCommands)
 }
 
 func (s *HWShade) stop(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	sess := s.processor.Session(ctx)
+	ctx, sess := s.processor.Session(ctx)
 	return s.stopShade(ctx, sess, protocol.OutputCommands)
 }
 
 func (s *HWShade) set(ctx context.Context, args devices.OperationArgs) (any, error) {
-	sess := s.processor.Session(ctx)
+	ctx, sess := s.processor.Session(ctx)
 	return s.setShadeLevel(ctx, sess, protocol.OutputCommands, args.Args)
 }

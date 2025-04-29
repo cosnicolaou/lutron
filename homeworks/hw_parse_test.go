@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"cloudeng.io/logging/ctxlog"
 	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/lutron/homeworks"
 	"gopkg.in/yaml.v3"
@@ -48,8 +49,8 @@ func TestHWParsing(t *testing.T) {
 
 	logRecorder := bytes.NewBuffer(nil)
 	logger := slog.New(slog.NewJSONHandler(logRecorder, nil))
+	ctx = ctxlog.WithLogger(ctx, logger)
 	opts := []devices.Option{
-		devices.WithLogger(logger),
 		devices.WithDevices(homeworks.SupportedDevices()),
 		devices.WithControllers(homeworks.SupportedControllers()),
 	}
