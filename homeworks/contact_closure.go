@@ -51,16 +51,24 @@ func (cc *ContactClosure) ControlledBy() devices.Controller {
 }
 
 func (cc *ContactClosure) PulseOn(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	ctx, s := cc.processor.Session(ctx)
+	ctx, s, err := cc.processor.Session(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer s.Release()
 	return contactClosurePulse(ctx, s, []byte(strconv.Itoa(cc.DeviceConfigCustom.ID)), cc.DeviceConfigCustom.Duration, '1', '0')
 }
 
 func (cc *ContactClosure) PulseOff(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	ctx, s := cc.processor.Session(ctx)
+	ctx, s, err := cc.processor.Session(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer s.Release()
 	return contactClosurePulse(ctx, s, []byte(strconv.Itoa(cc.DeviceConfigCustom.ID)), cc.DeviceConfigCustom.Duration, '0', '1')
 }
 
-func contactClosurePulse(ctx context.Context, s streamconn.Session, id []byte, pulse time.Duration, l0, l1 byte) (any, error) {
+func contactClosurePulse(ctx context.Context, s *streamconn.Session, id []byte, pulse time.Duration, l0, l1 byte) (any, error) {
 	pars := make([]byte, 0, 32)
 	pars = append(pars, id...)
 	pars = append(pars, ',', '1', ',', l0)
@@ -119,7 +127,11 @@ func (cc *ContactClosureOpenClose) ControlledBy() devices.Controller {
 func (cc *ContactClosureOpenClose) pulse(ctx context.Context, id []byte) (any, error) {
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
-	ctx, s := cc.processor.Session(ctx)
+	ctx, s, err := cc.processor.Session(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer s.Release()
 	if cc.DeviceConfigCustom.PulseLow {
 		return contactClosurePulse(ctx, s, id, cc.DeviceConfigCustom.Duration, '0', '1')
 	}

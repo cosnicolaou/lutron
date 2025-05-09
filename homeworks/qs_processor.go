@@ -30,12 +30,15 @@ type QSProcessorConfig struct {
 type QSProcessor struct {
 	devices.ControllerBase[QSProcessorConfig]
 
-	ondemand *netutil.OnDemandConnection[streamconn.Session, *QSProcessor]
+	mgr      *streamconn.SessionManager
+	ondemand *netutil.OnDemandConnection[streamconn.Transport, *QSProcessor]
 }
 
 func NewQSProcessor(_ devices.Options) *QSProcessor {
-	p := &QSProcessor{}
-	p.ondemand = netutil.NewOnDemandConnection(p, streamconn.NewErrorSession)
+	p := &QSProcessor{
+		mgr: &streamconn.SessionManager{},
+	}
+	p.ondemand = netutil.NewOnDemandConnection(p)
 	return p
 }
 
@@ -57,7 +60,11 @@ func (p *QSProcessor) Implementation() any {
 func (p *QSProcessor) Operations() map[string]devices.Operation {
 	return map[string]devices.Operation{
 		"gettime": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx, sess := p.Session(ctx)
+			ctx, sess, err := p.Session(ctx)
+			if err != nil {
+				return nil, err
+			}
+			defer sess.Release()
 			t, err := protocol.GetTime(ctx, sess)
 			if err == nil {
 				fmt.Fprintf(args.Writer, "gettime: %v\n", t)
@@ -67,7 +74,11 @@ func (p *QSProcessor) Operations() map[string]devices.Operation {
 			}{Time: t.String()}, err
 		},
 		"getlocation": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx, sess := p.Session(ctx)
+			ctx, sess, err := p.Session(ctx)
+			if err != nil {
+				return nil, err
+			}
+			defer sess.Release()
 			lat, long, err := protocol.GetLatLong(ctx, sess)
 			if err == nil {
 				fmt.Fprintf(args.Writer, "latlong: %vN %vW\n", lat, long)
@@ -78,7 +89,11 @@ func (p *QSProcessor) Operations() map[string]devices.Operation {
 			}{Latitude: lat, Longitude: long}, err
 		},
 		"getsuntimes": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx, sess := p.Session(ctx)
+			ctx, sess, err := p.Session(ctx)
+			if err != nil {
+				return nil, err
+			}
+			defer sess.Release()
 			rise, set, err := protocol.GetSunriseSunset(ctx, sess)
 			if err == nil {
 				fmt.Fprintf(args.Writer, "sunrise: %v, sunset: %v\n",
@@ -93,7 +108,11 @@ func (p *QSProcessor) Operations() map[string]devices.Operation {
 			}, err
 		},
 		"os_version": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx, sess := p.Session(ctx)
+			ctx, sess, err := p.Session(ctx)
+			if err != nil {
+				return nil, err
+			}
+			defer sess.Release()
 			osv, err := protocol.GetVersion(ctx, sess)
 			if err == nil {
 				fmt.Fprintf(args.Writer, "%v\n", osv)
@@ -114,24 +133,25 @@ func (*QSProcessor) OperationsHelp() map[string]string {
 	}
 }
 
-func (p *QSProcessor) Connect(ctx context.Context, idle netutil.IdleReset) (streamconn.Session, error) {
+func (p *QSProcessor) Connect(ctx context.Context, idle netutil.IdleReset) (streamconn.Transport, error) {
 	transport, err := telnet.Dial(ctx, p.ControllerConfigCustom.IPAddress, p.Timeout)
 	if err != nil {
 		return nil, err
 	}
-	session := streamconn.NewSession(transport, idle)
+	session := p.mgr.New(transport, idle)
+	defer session.Release()
 
 	// Authenticate
 	keys := keystore.AuthFromContextForID(ctx, p.ControllerConfigCustom.KeyID)
 	if err := protocol.QSLogin(ctx, session, keys.User, keys.Token); err != nil {
-		session.Close(ctx)
+		transport.Close(ctx)
 		return nil, err
 	}
-	return session, nil
+	return transport, nil
 }
 
-func (p *QSProcessor) Disconnect(ctx context.Context, sess streamconn.Session) error {
-	return sess.Close(ctx)
+func (p *QSProcessor) Disconnect(ctx context.Context, conn streamconn.Transport) error {
+	return conn.Close(ctx)
 }
 
 func (p *QSProcessor) loggingContext(ctx context.Context) context.Context {
@@ -140,9 +160,14 @@ func (p *QSProcessor) loggingContext(ctx context.Context) context.Context {
 
 // Session returns an authenticated session to the QS processor. If
 // an error is encountered then an error session is returned.
-func (p *QSProcessor) Session(ctx context.Context) (context.Context, streamconn.Session) {
+func (p *QSProcessor) Session(ctx context.Context) (context.Context, *streamconn.Session, error) {
 	ctx = p.loggingContext(ctx)
-	return ctx, p.ondemand.Connection(ctx)
+	transport, idle, error := p.ondemand.Connection(ctx)
+	if error != nil {
+		return ctx, nil, error
+	}
+	session := p.mgr.New(transport, idle)
+	return ctx, session, nil
 }
 
 func (p *QSProcessor) Close(ctx context.Context) error {

@@ -44,7 +44,7 @@ func NormalizeTimeZone(tz string) string {
 }
 
 // System sends a '[#?]System' command to the Lutron system.
-func System(ctx context.Context, s streamconn.Session, set bool, action SystemActions) (string, error) {
+func System(ctx context.Context, s *streamconn.Session, set bool, action SystemActions) (string, error) {
 	cmd := NewCommand(SystemCommands, set, []byte(strconv.Itoa(int(action))))
 	if action == SystemOSRev {
 		cmd.SetCustomResponse([]byte("OS Firmware Revision ="))
@@ -59,7 +59,7 @@ func System(ctx context.Context, s streamconn.Session, set bool, action SystemAc
 	return r, nil
 }
 
-func SystemQuery(ctx context.Context, s streamconn.Session, action SystemActions) (string, error) {
+func SystemQuery(ctx context.Context, s *streamconn.Session, action SystemActions) (string, error) {
 	response, err := System(ctx, s, false, action)
 	if err != nil {
 		return "", fmt.Errorf("%v: %w", action, err)
@@ -67,7 +67,7 @@ func SystemQuery(ctx context.Context, s streamconn.Session, action SystemActions
 	return response, nil
 }
 
-func GetTime(ctx context.Context, s streamconn.Session) (time.Time, error) {
+func GetTime(ctx context.Context, s *streamconn.Session) (time.Time, error) {
 	date, err := SystemQuery(ctx, s, SystemDate)
 	if err != nil {
 		return time.Time{}, err
@@ -88,7 +88,7 @@ func GetTime(ctx context.Context, s streamconn.Session) (time.Time, error) {
 	return sysTime, nil
 }
 
-func GetLatLong(ctx context.Context, s streamconn.Session) (float64, float64, error) {
+func GetLatLong(ctx context.Context, s *streamconn.Session) (float64, float64, error) {
 	latlong, err := SystemQuery(ctx, s, SystemLatLong)
 	if err != nil {
 		return 0, 0, err
@@ -108,7 +108,7 @@ func GetLatLong(ctx context.Context, s streamconn.Session) (float64, float64, er
 	return lat, long, nil
 }
 
-func GetSunriseSunset(ctx context.Context, s streamconn.Session) (time.Time, time.Time, error) {
+func GetSunriseSunset(ctx context.Context, s *streamconn.Session) (time.Time, time.Time, error) {
 	sunrise, err := SystemQuery(ctx, s, SystemSunrise)
 	if err != nil {
 		return time.Time{}, time.Time{}, err
@@ -129,7 +129,7 @@ func GetSunriseSunset(ctx context.Context, s streamconn.Session) (time.Time, tim
 	return sunriseT, sunsetT, nil
 }
 
-func GetVersion(ctx context.Context, s streamconn.Session) (string, error) {
+func GetVersion(ctx context.Context, s *streamconn.Session) (string, error) {
 	data, err := SystemQuery(ctx, s, SystemOSRev)
 	if err != nil {
 		return "", err
