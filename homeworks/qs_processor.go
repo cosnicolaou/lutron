@@ -57,69 +57,100 @@ func (p *QSProcessor) Implementation() any {
 	return p
 }
 
+func (p *QSProcessor) runOperation(ctx context.Context, op func(context.Context, *streamconn.Session, devices.OperationArgs) (any, error), args devices.OperationArgs) (any, error) {
+	ctx, sess, err := p.session(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer sess.Release()
+	return op(ctx, sess, args)
+}
+
+func (p *QSProcessor) contactClosurePulse(ctx context.Context, id []byte, pulse time.Duration, l0, l1 byte) (any, error) {
+	ctx, sess, err := p.session(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer sess.Release()
+	pars := make([]byte, 0, 32)
+	pars = append(pars, id...)
+	pars = append(pars, ',', '1', ',', l0)
+	// Ignore any response since the response may refer
+	// to integration IDs that don't match the request.
+	// This happens when the contact closure is activated
+	// via a visor control for example where the request is
+	// sent to the visor control, but the system issues
+	// monitoring commands that refer to the integration IDs
+	// of the devices connected to the visor control.
+	err = protocol.NewCommand(protocol.OutputCommands, true, pars).Invoke(ctx, sess)
+	if err != nil {
+		return nil, err
+	}
+	time.Sleep(pulse)
+	pars[len(pars)-1] = l1
+	err = protocol.NewCommand(protocol.OutputCommands, true, pars).Invoke(ctx, sess)
+	return nil, err
+}
+
+func (p *QSProcessor) getTime(ctx context.Context, sess *streamconn.Session, args devices.OperationArgs) (any, error) {
+	t, err := protocol.GetTime(ctx, sess)
+	if err == nil {
+		fmt.Fprintf(args.Writer, "gettime: %v\n", t)
+	}
+	return struct {
+		Time string `json:"time"`
+	}{Time: t.String()}, err
+}
+
+func (p *QSProcessor) getLocation(ctx context.Context, sess *streamconn.Session, args devices.OperationArgs) (any, error) {
+	lat, long, err := protocol.GetLatLong(ctx, sess)
+	if err == nil {
+		fmt.Fprintf(args.Writer, "latlong: %vN %vW\n", lat, long)
+	}
+	return struct {
+		Latitude  float64 `json:"latitude"`
+		Longitude float64 `json:"longitude"`
+	}{Latitude: lat, Longitude: long}, err
+}
+
+func (p *QSProcessor) getSuntimes(ctx context.Context, sess *streamconn.Session, args devices.OperationArgs) (any, error) {
+	rise, set, err := protocol.GetSunriseSunset(ctx, sess)
+	if err == nil {
+		fmt.Fprintf(args.Writer, "sunrise: %v, sunset: %v\n",
+			rise.Format("15:04:05"), set.Format("15:04:05"))
+	}
+	return struct {
+		SunRise string `json:"sunrise"`
+		SunSet  string `json:"sunset"`
+	}{
+		SunRise: rise.Format("15:04:05"),
+		SunSet:  set.Format("15:04:05"),
+	}, err
+}
+
+func (p *QSProcessor) getOSVersion(ctx context.Context, sess *streamconn.Session, args devices.OperationArgs) (any, error) {
+	osv, err := protocol.GetVersion(ctx, sess)
+	if err == nil {
+		fmt.Fprintf(args.Writer, "%v\n", osv)
+	}
+	return struct {
+		OSVersion string `json:"os_version"`
+	}{OSVersion: osv}, err
+}
+
 func (p *QSProcessor) Operations() map[string]devices.Operation {
 	return map[string]devices.Operation{
 		"gettime": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx, sess, err := p.Session(ctx)
-			if err != nil {
-				return nil, err
-			}
-			defer sess.Release()
-			t, err := protocol.GetTime(ctx, sess)
-			if err == nil {
-				fmt.Fprintf(args.Writer, "gettime: %v\n", t)
-			}
-			return struct {
-				Time string `json:"time"`
-			}{Time: t.String()}, err
+			return p.runOperation(ctx, p.getTime, args)
 		},
 		"getlocation": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx, sess, err := p.Session(ctx)
-			if err != nil {
-				return nil, err
-			}
-			defer sess.Release()
-			lat, long, err := protocol.GetLatLong(ctx, sess)
-			if err == nil {
-				fmt.Fprintf(args.Writer, "latlong: %vN %vW\n", lat, long)
-			}
-			return struct {
-				Latitude  float64 `json:"latitude"`
-				Longitude float64 `json:"longitude"`
-			}{Latitude: lat, Longitude: long}, err
+			return p.runOperation(ctx, p.getLocation, args)
 		},
 		"getsuntimes": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx, sess, err := p.Session(ctx)
-			if err != nil {
-				return nil, err
-			}
-			defer sess.Release()
-			rise, set, err := protocol.GetSunriseSunset(ctx, sess)
-			if err == nil {
-				fmt.Fprintf(args.Writer, "sunrise: %v, sunset: %v\n",
-					rise.Format("15:04:05"), set.Format("15:04:05"))
-			}
-			return struct {
-				SunRise string `json:"sunrise"`
-				SunSet  string `json:"sunset"`
-			}{
-				SunRise: rise.Format("15:04:05"),
-				SunSet:  set.Format("15:04:05"),
-			}, err
+			return p.runOperation(ctx, p.getSuntimes, args)
 		},
 		"os_version": func(ctx context.Context, args devices.OperationArgs) (any, error) {
-			ctx, sess, err := p.Session(ctx)
-			if err != nil {
-				return nil, err
-			}
-			defer sess.Release()
-			osv, err := protocol.GetVersion(ctx, sess)
-			if err == nil {
-				fmt.Fprintf(args.Writer, "%v\n", osv)
-			}
-			return struct {
-				OSVersion string `json:"os_version"`
-			}{OSVersion: osv}, err
+			return p.runOperation(ctx, p.getOSVersion, args)
 		},
 	}
 }
@@ -134,43 +165,40 @@ func (*QSProcessor) OperationsHelp() map[string]string {
 }
 
 func (p *QSProcessor) Connect(ctx context.Context, idle netutil.IdleReset) (streamconn.Transport, error) {
-	transport, err := telnet.Dial(ctx, p.ControllerConfigCustom.IPAddress, p.Timeout)
+	conn, err := telnet.Dial(ctx, p.ControllerConfigCustom.IPAddress, p.Timeout)
 	if err != nil {
 		return nil, err
 	}
-	session := p.mgr.New(transport, idle)
+	session := p.mgr.New(conn, idle)
 	defer session.Release()
 
 	// Authenticate
 	keys := keystore.AuthFromContextForID(ctx, p.ControllerConfigCustom.KeyID)
 	if err := protocol.QSLogin(ctx, session, keys.User, keys.Token); err != nil {
-		transport.Close(ctx)
+		conn.Close(ctx)
 		return nil, err
 	}
-	return transport, nil
+	return conn, nil
 }
 
 func (p *QSProcessor) Disconnect(ctx context.Context, conn streamconn.Transport) error {
 	return conn.Close(ctx)
 }
 
-func (p *QSProcessor) loggingContext(ctx context.Context) context.Context {
-	return ctxlog.WithAttributes(ctx, "protocol", "homeworks-qs")
-}
-
 // Session returns an authenticated session to the QS processor. If
 // an error is encountered then an error session is returned.
-func (p *QSProcessor) Session(ctx context.Context) (context.Context, *streamconn.Session, error) {
-	ctx = p.loggingContext(ctx)
-	transport, idle, error := p.ondemand.Connection(ctx)
-	if error != nil {
-		return ctx, nil, error
+// It also adds the protocol name to the context for logging purposes.
+// The session must be released when the operation is complete.
+func (p *QSProcessor) session(ctx context.Context) (context.Context, *streamconn.Session, error) {
+	ctx = ctxlog.WithAttributes(ctx, "protocol", "homeworks-qs")
+	conn, idle, err := p.ondemand.Connection(ctx)
+	if err != nil {
+		return ctx, nil, err
 	}
-	session := p.mgr.New(transport, idle)
+	session := p.mgr.New(conn, idle)
 	return ctx, session, nil
 }
 
 func (p *QSProcessor) Close(ctx context.Context) error {
-	ctx = p.loggingContext(ctx)
 	return p.ondemand.Close(ctx)
 }

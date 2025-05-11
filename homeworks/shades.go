@@ -12,7 +12,6 @@ import (
 
 	"cloudeng.io/logging/ctxlog"
 	"github.com/cosnicolaou/automation/devices"
-	"github.com/cosnicolaou/automation/net/streamconn"
 	"github.com/cosnicolaou/lutron/protocol"
 )
 
@@ -63,36 +62,41 @@ func (sb hwShadeBase) operations(raise, lower, stop, set devices.Operation) map[
 	}
 }
 
-func (sb hwShadeBase) runShadeCommand(ctx context.Context, s *streamconn.Session, cg protocol.CommandGroup, pars []byte, op string) (any, error) {
+func (sb hwShadeBase) runShadeCommand(ctx context.Context, cg protocol.CommandGroup, pars []byte, op string) (any, error) {
+	ctx, sess, err := sb.processor.session(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer sess.Release()
 	grp := slog.Group("lutron", "device", "shade", "id", sb.DeviceConfigCustom.ID, "op", op)
 	ctx = ctxlog.WithAttributes(ctx, grp)
-	err := protocol.NewCommand(cg, true, pars).Invoke(ctx, s)
+	err = protocol.NewCommand(cg, true, pars).Invoke(ctx, sess)
 	return nil, err
 }
 
-func (sb hwShadeBase) raiseShade(ctx context.Context, s *streamconn.Session, cg protocol.CommandGroup) (any, error) {
+func (sb hwShadeBase) raiseShade(ctx context.Context, cg protocol.CommandGroup) (any, error) {
 	pars := append([]byte(strconv.Itoa(sb.DeviceConfigCustom.ID)), ',', '2')
-	return sb.runShadeCommand(ctx, s, cg, pars, "raise")
+	return sb.runShadeCommand(ctx, cg, pars, "raise")
 }
 
-func (sb hwShadeBase) lowerShade(ctx context.Context, s *streamconn.Session, cg protocol.CommandGroup) (any, error) {
+func (sb hwShadeBase) lowerShade(ctx context.Context, cg protocol.CommandGroup) (any, error) {
 	pars := append([]byte(strconv.Itoa(sb.DeviceConfigCustom.ID)), ',', '3')
-	return sb.runShadeCommand(ctx, s, cg, pars, "lower")
+	return sb.runShadeCommand(ctx, cg, pars, "lower")
 }
 
-func (sb hwShadeBase) stopShade(ctx context.Context, s *streamconn.Session, cg protocol.CommandGroup) (any, error) {
+func (sb hwShadeBase) stopShade(ctx context.Context, cg protocol.CommandGroup) (any, error) {
 	pars := append([]byte(strconv.Itoa(sb.DeviceConfigCustom.ID)), ',', '4')
-	return sb.runShadeCommand(ctx, s, cg, pars, "stop")
+	return sb.runShadeCommand(ctx, cg, pars, "stop")
 }
 
-func (sb hwShadeBase) setShadeLevel(ctx context.Context, s *streamconn.Session, cg protocol.CommandGroup, args []string) (any, error) {
+func (sb hwShadeBase) setShadeLevel(ctx context.Context, cg protocol.CommandGroup, args []string) (any, error) {
 	level, err := parseShadeLevel(args)
 	if err != nil {
 		return nil, err
 	}
 	pars := append([]byte(strconv.Itoa(sb.DeviceConfigCustom.ID)), ',', '1', ',')
 	pars = append(pars, []byte(strconv.Itoa(level))...)
-	return sb.runShadeCommand(ctx, s, cg, pars, "set")
+	return sb.runShadeCommand(ctx, cg, pars, "set")
 }
 
 // HWShadeGroupConfig represents the configuration for a group of shades
@@ -111,39 +115,19 @@ func (sg *HWShadeGroup) Operations() map[string]devices.Operation {
 }
 
 func (sg *HWShadeGroup) raise(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	ctx, sess, err := sg.processor.Session(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer sess.Release()
-	return sg.raiseShade(ctx, sess, protocol.ShadeGroupCommands)
+	return sg.raiseShade(ctx, protocol.ShadeGroupCommands)
 }
 
 func (sg *HWShadeGroup) lower(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	ctx, sess, err := sg.processor.Session(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer sess.Release()
-	return sg.lowerShade(ctx, sess, protocol.ShadeGroupCommands)
+	return sg.lowerShade(ctx, protocol.ShadeGroupCommands)
 }
 
 func (sg *HWShadeGroup) stop(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	ctx, sess, err := sg.processor.Session(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer sess.Release()
-	return sg.stopShade(ctx, sess, protocol.ShadeGroupCommands)
+	return sg.stopShade(ctx, protocol.ShadeGroupCommands)
 }
 
 func (sg *HWShadeGroup) set(ctx context.Context, args devices.OperationArgs) (any, error) {
-	ctx, sess, err := sg.processor.Session(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer sess.Release()
-	return sg.setShadeLevel(ctx, sess, protocol.ShadeGroupCommands, args.Args)
+	return sg.setShadeLevel(ctx, protocol.ShadeGroupCommands, args.Args)
 }
 
 func (s *HWShade) Operations() map[string]devices.Operation {
@@ -151,37 +135,17 @@ func (s *HWShade) Operations() map[string]devices.Operation {
 }
 
 func (s *HWShade) raise(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	ctx, sess, err := s.processor.Session(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer sess.Release()
-	return s.raiseShade(ctx, sess, protocol.OutputCommands)
+	return s.raiseShade(ctx, protocol.OutputCommands)
 }
 
 func (s *HWShade) lower(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	ctx, sess, err := s.processor.Session(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer sess.Release()
-	return s.lowerShade(ctx, sess, protocol.OutputCommands)
+	return s.lowerShade(ctx, protocol.OutputCommands)
 }
 
 func (s *HWShade) stop(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	ctx, sess, err := s.processor.Session(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer sess.Release()
-	return s.stopShade(ctx, sess, protocol.OutputCommands)
+	return s.stopShade(ctx, protocol.OutputCommands)
 }
 
 func (s *HWShade) set(ctx context.Context, args devices.OperationArgs) (any, error) {
-	ctx, sess, err := s.processor.Session(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer sess.Release()
-	return s.setShadeLevel(ctx, sess, protocol.OutputCommands, args.Args)
+	return s.setShadeLevel(ctx, protocol.OutputCommands, args.Args)
 }
