@@ -22,9 +22,13 @@ var (
 )
 
 func QSLogin(ctx context.Context, s *streamconn.Session, user, pass string) error {
-	s.ReadUntil(ctx, "login: ")
+	if _, err := s.ReadUntil(ctx, "login: "); err != nil {
+		return fmt.Errorf("user: %v: %w", user, err)
+	}
 	s.Send(ctx, []byte(user+"\r\n"))
-	s.ReadUntil(ctx, "password: ")
+	if _, err := s.ReadUntil(ctx, "password: "); err != nil {
+		return fmt.Errorf("user: %v: %w", user, err)
+	}
 	s.SendSensitive(ctx, []byte(pass+"\r\n"))
 	prompt, err := s.ReadUntil(ctx, qsPromptStr, "login:")
 	if err != nil {
