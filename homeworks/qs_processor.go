@@ -185,6 +185,10 @@ func (p *QSProcessor) Disconnect(ctx context.Context, conn streamconn.Transport)
 	return conn.Close(ctx)
 }
 
+func (p *QSProcessor) loggingContext(ctx context.Context) context.Context {
+	return ctxlog.WithAttributes(ctx, "protocol", "homeworks-qs")
+}
+
 // Session returns an authenticated session to the QS processor. If
 // an error is encountered then an error session is returned.
 // It also adds the protocol name to the context for logging purposes.
@@ -200,5 +204,6 @@ func (p *QSProcessor) session(ctx context.Context) (context.Context, *streamconn
 }
 
 func (p *QSProcessor) Close(ctx context.Context) error {
+	ctx = p.loggingContext(ctx)
 	return p.ondemand.Close(ctx)
 }
