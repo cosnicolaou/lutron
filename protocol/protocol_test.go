@@ -27,7 +27,8 @@ func TestLogin(t *testing.T) {
 	mock.SetResponse("bad-password\r\n", "\r\nbad login\r\nlogin:\r\n")
 
 	idle := netutil.NewIdleTimer(10)
-	s := streamconn.NewSession(mock, idle)
+	mgr := &streamconn.SessionManager{}
+	s := mgr.New(mock, idle)
 
 	if _, err := mock.Send(ctx, []byte("login: ")); err != nil {
 		t.Fatal(err)
@@ -38,7 +39,8 @@ func TestLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s = streamconn.NewSession(mock, idle)
+	s.Release()
+	s = mgr.New(mock, idle)
 
 	if _, err := mock.Send(ctx, []byte("login: ")); err != nil {
 		t.Fatal(err)

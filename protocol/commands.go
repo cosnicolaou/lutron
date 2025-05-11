@@ -166,10 +166,10 @@ func (c Command) responsePrefix() []byte {
 
 // Call sends the command to the Lutron system, waits for a prompt
 // and returns the response.
-func (c Command) Call(ctx context.Context, s streamconn.Session) (string, error) {
+func (c Command) Call(ctx context.Context, s *streamconn.Session) (string, error) {
 	s.Send(ctx, c.request())
-	response := s.ReadUntil(ctx, "QNET> ")
-	if err := s.Err(); err != nil {
+	response, err := s.ReadUntil(ctx, "QNET> ")
+	if err != nil {
 		return "", err
 	}
 	r, err := ParseResponse(c.responsePrefix(), response)
@@ -184,12 +184,12 @@ func (c Command) Call(ctx context.Context, s streamconn.Session) (string, error)
 
 // Invoke sends the command to the Lutron system, waits for a prompt
 // and returns. A response is not expected.
-func (c Command) Invoke(ctx context.Context, s streamconn.Session) error {
+func (c Command) Invoke(ctx context.Context, s *streamconn.Session) error {
 	s.Send(ctx, c.request())
-	response := s.ReadUntil(ctx, "QNET> ")
-	if err := s.Err(); err != nil {
+	response, err := s.ReadUntil(ctx, "QNET> ")
+	if err != nil {
 		return err
 	}
-	_, err := ParseResponse(c.responsePrefix(), response)
+	_, err = ParseResponse(c.responsePrefix(), response)
 	return err
 }
