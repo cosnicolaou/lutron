@@ -6,8 +6,12 @@ cloudeng.io/file v0.0.0-20250428223124-bb967ac9f3f8 h1:+UoQbuslTATAty78yj7O5Su27
 cloudeng.io/file v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:oim2jVljgZXzwJJSywUcdyROOSEvhLjIQvKDv+79tVI=
 cloudeng.io/logging v0.0.0-20250428223124-bb967ac9f3f8 h1:/mGihcZqyJOS3jQOrTEZIzlLiX8gaDaasP736sTOjqY=
 cloudeng.io/logging v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:D0TUs3Aiwa1c7xI/TE7JITYnICck34r6DR5twakJjIs=
+cloudeng.io/macos v0.0.0-20250428223124-bb967ac9f3f8 h1:I0VhpuyI1GYAf311aYIjxFDnCy1RQNXB+dHBW+bRxlM=
+cloudeng.io/macos v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:hXOiYDEHPmwqul0MvkYd6vir3Bb67R/0ETGZuoH2vkc=
 github.com/cosnicolaou/automation v0.0.0-20250428235220-63c5b2ef90d7 h1:ndMuMDbCpDhvqTZpKTHzBf0gRiW2rguzCVj16T5rLt0=
 github.com/cosnicolaou/automation v0.0.0-20250428235220-63c5b2ef90d7/go.mod h1:2+X6EXF3vBXmtZp5nB4+Ia1f15LEQjjZTR5mnElBHmg=
+github.com/cosnicolaou/automation v0.0.0-20250511224936-0ce968442790 h1:hNo/fPglb5XnjJDRztKeudv4PbI04cOWGeDwelx4AVo=
+github.com/cosnicolaou/automation v0.0.0-20250511224936-0ce968442790/go.mod h1:8OII7M8bWdJF5ZDKYUVpODyWKoeljiHEJKsXsONkZXw=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
