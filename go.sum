@@ -6,8 +6,12 @@ cloudeng.io/file v0.0.0-20250428223124-bb967ac9f3f8 h1:+UoQbuslTATAty78yj7O5Su27
 cloudeng.io/file v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:oim2jVljgZXzwJJSywUcdyROOSEvhLjIQvKDv+79tVI=
 cloudeng.io/logging v0.0.0-20250428223124-bb967ac9f3f8 h1:/mGihcZqyJOS3jQOrTEZIzlLiX8gaDaasP736sTOjqY=
 cloudeng.io/logging v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:D0TUs3Aiwa1c7xI/TE7JITYnICck34r6DR5twakJjIs=
-github.com/cosnicolaou/automation v0.0.0-20250511224936-0ce968442790 h1:hNo/fPglb5XnjJDRztKeudv4PbI04cOWGeDwelx4AVo=
-github.com/cosnicolaou/automation v0.0.0-20250511224936-0ce968442790/go.mod h1:8OII7M8bWdJF5ZDKYUVpODyWKoeljiHEJKsXsONkZXw=
+cloudeng.io/macos v0.0.0-20250428223124-bb967ac9f3f8 h1:I0VhpuyI1GYAf311aYIjxFDnCy1RQNXB+dHBW+bRxlM=
+cloudeng.io/macos v0.0.0-20250428223124-bb967ac9f3f8/go.mod h1:hXOiYDEHPmwqul0MvkYd6vir3Bb67R/0ETGZuoH2vkc=
+github.com/cosnicolaou/automation v0.0.0-20250511233718-a4619697aeae h1:vJsyalz06xQcNIBJHLckNM+5LdMkzq3cqSXtx+B2rHg=
+github.com/cosnicolaou/automation v0.0.0-20250511233718-a4619697aeae/go.mod h1:d3KJXO0phiAQ+NtWdMM0HoSBSIRRBFvzuwXjjwAHwDI=
+github.com/cosnicolaou/automation v0.0.0-20250516220144-b6f3bad30206 h1:+OjXV+TucMYsf4jQP0ztSIRZSApa3GvLTBNxEqKCsoM=
+github.com/cosnicolaou/automation v0.0.0-20250516220144-b6f3bad30206/go.mod h1:d3KJXO0phiAQ+NtWdMM0HoSBSIRRBFvzuwXjjwAHwDI=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
@@ -21,8 +25,8 @@ github.com/rogpeppe/go-internal v1.12.0 h1:exVL4IDcn6na9z1rAb56Vxr+CgyK3nn3O+epU
 github.com/rogpeppe/go-internal v1.12.0/go.mod h1:E+RYuTGaKKdloAfM02xzb0FW3Paa99yedzYV+kq4uf4=
 github.com/ziutek/telnet v0.1.0 h1:Fds2AqweYyoRHX/5X8ikiyqIcSl156Sf2xCvURfqXHA=
 github.com/ziutek/telnet v0.1.0/go.mod h1:3M/h4qudUBZA8n+N4ywQIu2auiHUJNdqLUIKDAbG2M4=
-golang.org/x/text v0.24.0 h1:dd5Bzh4yt5KYA8f9CJHCP4FB4D51c2c6JvN37xJJkJ0=
-golang.org/x/text v0.24.0/go.mod h1:L8rBsPeo2pSS+xqN0d5u2ikmjtmoJbDBT1b7nHvFCdU=
+golang.org/x/text v0.25.0 h1:qVyWApTSYLk/drJRO5mDlNYskwQznZmkpV2c8q9zls4=
+golang.org/x/text v0.25.0/go.mod h1:WEdwpYrmk1qmdHvhkSTNPm3app7v4rsT8F2UD6+VHIA=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=
 gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=

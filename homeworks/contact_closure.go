@@ -16,8 +16,9 @@ import (
 )
 
 type ContactClosureConfig struct {
-	ID       int           `yaml:"id"`
-	Duration time.Duration `yaml:"duration"`
+	ID                int           `yaml:"id"`
+	PulseDuration     time.Duration `yaml:"pulse_duration"`
+	OperationInterval time.Duration `yaml:"operation_interval"`
 }
 
 type ContactClosure struct {
@@ -49,19 +50,27 @@ func (cc *ContactClosure) ControlledBy() devices.Controller {
 }
 
 func (cc *ContactClosure) PulseOn(ctx context.Context, _ devices.OperationArgs) (any, error) {
-
-	return cc.processor.contactClosurePulse(ctx, []byte(strconv.Itoa(cc.DeviceConfigCustom.ID)), cc.DeviceConfigCustom.Duration, '1', '0')
+	return cc.processor.contactClosurePulse(ctx,
+		[]byte(strconv.Itoa(cc.DeviceConfigCustom.ID)),
+		cc.DeviceConfigCustom.PulseDuration,
+		cc.DeviceConfigCustom.OperationInterval,
+		'1', '0')
 }
 
 func (cc *ContactClosure) PulseOff(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	return cc.processor.contactClosurePulse(ctx, []byte(strconv.Itoa(cc.DeviceConfigCustom.ID)), cc.DeviceConfigCustom.Duration, '0', '1')
+	return cc.processor.contactClosurePulse(ctx,
+		[]byte(strconv.Itoa(cc.DeviceConfigCustom.ID)),
+		cc.DeviceConfigCustom.PulseDuration,
+		cc.DeviceConfigCustom.OperationInterval,
+		'0', '1')
 }
 
 type ContactClosureOpenCloseConfig struct {
-	OpenID   int           `yaml:"open_id"`
-	CloseID  int           `yaml:"close_id"`
-	PulseLow bool          `yaml:"pulse_low"`
-	Duration time.Duration `yaml:"duration"`
+	OpenID            int           `yaml:"open_id"`
+	CloseID           int           `yaml:"close_id"`
+	PulseLow          bool          `yaml:"pulse_low"`
+	PulseDuration     time.Duration `yaml:"pulse_duration"`
+	OperationInterval time.Duration `yaml:"operation_interval"`
 }
 
 type ContactClosureOpenClose struct {
@@ -92,27 +101,41 @@ func (cc *ContactClosureOpenClose) ControlledBy() devices.Controller {
 	return cc.processor
 }
 
-func (cc *ContactClosureOpenClose) pulse(ctx context.Context, id []byte) (any, error) {
+func (cc *ContactClosureOpenClose) pulse(ctx context.Context, id []byte, pulse, interval time.Duration) (any, error) {
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
 	if cc.DeviceConfigCustom.PulseLow {
-		return cc.processor.contactClosurePulse(ctx, id, cc.DeviceConfigCustom.Duration, '0', '1')
+		return cc.processor.contactClosurePulse(ctx, id, pulse, interval, '0', '1')
 	}
-	return cc.processor.contactClosurePulse(ctx, id, cc.DeviceConfigCustom.Duration, '1', '0')
+	return cc.processor.contactClosurePulse(ctx, id, pulse, interval, '1', '0')
 }
 
 func (cc *ContactClosureOpenClose) Open(ctx context.Context, _ devices.OperationArgs) (any, error) {
 	ids := strconv.Itoa(cc.DeviceConfigCustom.OpenID)
 	id := []byte(ids)
-	grp := slog.Group("lutron", "device", "contact-closure", "id", ids, "op", "open")
+	pulse := max(cc.DeviceConfigCustom.PulseDuration, 10*time.Millisecond)
+	interval := max(cc.DeviceConfigCustom.OperationInterval, time.Minute)
+	grp := slog.Group("lutron",
+		"device", "contact-closure",
+		"id", ids,
+		"op", "open",
+		"pulse", pulse.String(),
+		"interval", interval.String())
 	ctx = ctxlog.WithAttributes(ctx, grp)
-	return cc.pulse(ctx, id)
+	return cc.pulse(ctx, id, pulse, interval)
 }
 
 func (cc *ContactClosureOpenClose) Close(ctx context.Context, _ devices.OperationArgs) (any, error) {
 	ids := strconv.Itoa(cc.DeviceConfigCustom.CloseID)
 	id := []byte(ids)
-	grp := slog.Group("lutron", "device", "contact-closure", "id", ids, "op", "close")
+	pulse := max(cc.DeviceConfigCustom.PulseDuration, 10*time.Millisecond)
+	interval := max(cc.DeviceConfigCustom.OperationInterval, time.Minute)
+	grp := slog.Group("lutron",
+		"device", "contact-closure",
+		"id", ids,
+		"op", "close",
+		"pulse", pulse.String(),
+		"interval", interval.String())
 	ctx = ctxlog.WithAttributes(ctx, grp)
-	return cc.pulse(ctx, id)
+	return cc.pulse(ctx, id, pulse, interval)
 }

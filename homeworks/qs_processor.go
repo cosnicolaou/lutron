@@ -66,7 +66,7 @@ func (p *QSProcessor) runOperation(ctx context.Context, op func(context.Context,
 	return op(ctx, sess, args)
 }
 
-func (p *QSProcessor) contactClosurePulse(ctx context.Context, id []byte, pulse time.Duration, l0, l1 byte) (any, error) {
+func (p *QSProcessor) contactClosurePulse(ctx context.Context, id []byte, pulse, interval time.Duration, l0, l1 byte) (any, error) {
 	ctx, sess, err := p.session(ctx)
 	if err != nil {
 		return nil, err
@@ -89,6 +89,7 @@ func (p *QSProcessor) contactClosurePulse(ctx context.Context, id []byte, pulse 
 	time.Sleep(pulse)
 	pars[len(pars)-1] = l1
 	err = protocol.NewCommand(protocol.OutputCommands, true, pars).Invoke(ctx, sess)
+	time.Sleep(interval) // Seems to need a delay between successive commands.
 	return nil, err
 }
 
@@ -169,7 +170,7 @@ func (p *QSProcessor) Connect(ctx context.Context, idle netutil.IdleReset) (stre
 	if err != nil {
 		return nil, err
 	}
-	session := p.mgr.New(conn, idle)
+	ctx, session := p.mgr.NewWithContext(ctx, conn, idle)
 	defer session.Release()
 
 	// Authenticate
@@ -185,10 +186,6 @@ func (p *QSProcessor) Disconnect(ctx context.Context, conn streamconn.Transport)
 	return conn.Close(ctx)
 }
 
-func (p *QSProcessor) loggingContext(ctx context.Context) context.Context {
-	return ctxlog.WithAttributes(ctx, "protocol", "homeworks-qs")
-}
-
 // Session returns an authenticated session to the QS processor. If
 // an error is encountered then an error session is returned.
 // It also adds the protocol name to the context for logging purposes.
@@ -199,11 +196,10 @@ func (p *QSProcessor) session(ctx context.Context) (context.Context, *streamconn
 	if err != nil {
 		return ctx, nil, err
 	}
-	session := p.mgr.New(conn, idle)
+	ctx, session := p.mgr.NewWithContext(ctx, conn, idle)
 	return ctx, session, nil
 }
 
 func (p *QSProcessor) Close(ctx context.Context) error {
-	ctx = p.loggingContext(ctx)
 	return p.ondemand.Close(ctx)
 }
