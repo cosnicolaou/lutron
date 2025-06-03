@@ -19,8 +19,6 @@ func NewDevice(typ string, _ devices.Options) (devices.Device, error) {
 		return &HWShadeGroup{hwShadeBase: hwShadeBase{}}, nil
 	case "shade":
 		return &HWShade{hwShadeBase: hwShadeBase{}}, nil
-	case "contact-closure":
-		return &ContactClosure{}, nil
 	case "contact-closure-open-close":
 		return &ContactClosureOpenClose{}, nil
 
