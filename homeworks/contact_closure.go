@@ -15,56 +15,6 @@ import (
 	"github.com/cosnicolaou/automation/devices"
 )
 
-type ContactClosureConfig struct {
-	ID                int           `yaml:"id"`
-	PulseDuration     time.Duration `yaml:"pulse_duration"`
-	OperationInterval time.Duration `yaml:"operation_interval"`
-}
-
-type ContactClosure struct {
-	devices.DeviceBase[ContactClosureConfig]
-
-	processor *QSProcessor
-}
-
-func (cc *ContactClosure) Operations() map[string]devices.Operation {
-	return map[string]devices.Operation{
-		"pulse-on":  cc.PulseOn,
-		"pulse-off": cc.PulseOff,
-	}
-}
-
-func (cc *ContactClosure) OperationsHelp() map[string]string {
-	return map[string]string{
-		"pulse-on":  "pulse the contact closure to on",
-		"pulse-off": "pulse the contact closure to off",
-	}
-}
-
-func (cc *ContactClosure) SetController(c devices.Controller) {
-	cc.processor = c.Implementation().(*QSProcessor)
-}
-
-func (cc *ContactClosure) ControlledBy() devices.Controller {
-	return cc.processor
-}
-
-func (cc *ContactClosure) PulseOn(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	return cc.processor.contactClosurePulse(ctx,
-		[]byte(strconv.Itoa(cc.DeviceConfigCustom.ID)),
-		cc.DeviceConfigCustom.PulseDuration,
-		cc.DeviceConfigCustom.OperationInterval,
-		'1', '0')
-}
-
-func (cc *ContactClosure) PulseOff(ctx context.Context, _ devices.OperationArgs) (any, error) {
-	return cc.processor.contactClosurePulse(ctx,
-		[]byte(strconv.Itoa(cc.DeviceConfigCustom.ID)),
-		cc.DeviceConfigCustom.PulseDuration,
-		cc.DeviceConfigCustom.OperationInterval,
-		'0', '1')
-}
-
 type ContactClosureOpenCloseConfig struct {
 	OpenID            int           `yaml:"open_id"`
 	CloseID           int           `yaml:"close_id"`
@@ -110,11 +60,26 @@ func (cc *ContactClosureOpenClose) pulse(ctx context.Context, id []byte, pulse, 
 	return cc.processor.contactClosurePulse(ctx, id, pulse, interval, '1', '0')
 }
 
+func (cc *ContactClosureOpenClose) defaultIntervals() (time.Duration, time.Duration) {
+	// Default pulse duration is 10 milliseconds.
+	pulse := cc.DeviceConfigCustom.PulseDuration
+	if pulse == 0 {
+		cc.DeviceConfigCustom.PulseDuration = 10 * time.Millisecond
+	}
+	// Default operation interval is 30 seconds.
+	// If the operation interval is not set, we use a default of 30 seconds.
+	// This is to ensure that the device does not get polled too frequently.
+	interval := cc.DeviceConfigCustom.OperationInterval
+	if interval == 0 {
+		interval = time.Second * 30
+	}
+	return pulse, interval
+}
+
 func (cc *ContactClosureOpenClose) Open(ctx context.Context, _ devices.OperationArgs) (any, error) {
 	ids := strconv.Itoa(cc.DeviceConfigCustom.OpenID)
 	id := []byte(ids)
-	pulse := max(cc.DeviceConfigCustom.PulseDuration, 10*time.Millisecond)
-	interval := max(cc.DeviceConfigCustom.OperationInterval, time.Minute)
+	pulse, interval := cc.defaultIntervals()
 	grp := slog.Group("lutron",
 		"device", "contact-closure",
 		"id", ids,
@@ -128,8 +93,7 @@ func (cc *ContactClosureOpenClose) Open(ctx context.Context, _ devices.Operation
 func (cc *ContactClosureOpenClose) Close(ctx context.Context, _ devices.OperationArgs) (any, error) {
 	ids := strconv.Itoa(cc.DeviceConfigCustom.CloseID)
 	id := []byte(ids)
-	pulse := max(cc.DeviceConfigCustom.PulseDuration, 10*time.Millisecond)
-	interval := max(cc.DeviceConfigCustom.OperationInterval, time.Minute)
+	pulse, interval := cc.defaultIntervals()
 	grp := slog.Group("lutron",
 		"device", "contact-closure",
 		"id", ids,
