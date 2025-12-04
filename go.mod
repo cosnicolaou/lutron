@@ -12,7 +12,6 @@ require (
 require (
 	cloudeng.io/datetime v0.0.0-20250820215211-e1b65c305908 // indirect
 	cloudeng.io/file v0.0.0-20251120181725-ae601f12dbbf // indirect
-	cloudeng.io/macos v0.0.0-20250428223124-bb967ac9f3f8 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/ziutek/telnet v0.1.0 // indirect
 )
