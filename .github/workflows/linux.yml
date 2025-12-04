@@ -6,9 +6,12 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    uses: cloudengio/.github/.github/workflows/go-test.yml@main
+    uses: cloudengio/.github/.github/workflows/go-test-multimod.yml@main
 
   lint:
-    uses: cloudengio/.github/.github/workflows/go-lint.yml@main
+    uses: cloudengio/.github/.github/workflows/go-lint-multimod.yml@main

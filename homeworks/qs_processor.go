@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"cloudeng.io/cmdutil/unsafekeystore"
+	"cloudeng.io/cmdutil/keys"
 	"cloudeng.io/logging/ctxlog"
 	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/automation/net/netutil"
@@ -174,8 +174,12 @@ func (p *QSProcessor) Connect(ctx context.Context, idle netutil.IdleReset) (stre
 	defer session.Release()
 
 	// Authenticate
-	keys := unsafekeystore.AuthFromContextForID(ctx, p.ControllerConfigCustom.KeyID)
-	if err := protocol.QSLogin(ctx, session, keys.User, keys.Token); err != nil {
+	token, ok := keys.TokenFromContextForID(ctx, p.ControllerConfigCustom.KeyID)
+	if !ok {
+		conn.Close(ctx)
+		return nil, fmt.Errorf("no key found for id: %q", p.ControllerConfigCustom.KeyID)
+	}
+	if err := protocol.QSLogin(ctx, session, token.User, string(token.Value())); err != nil {
 		conn.Close(ctx)
 		return nil, err
 	}
